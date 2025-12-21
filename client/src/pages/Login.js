@@ -1,8 +1,10 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom"; 
 
 const Login = () => {
-  const [activeRole, setActiveRole] = useState("student"); // 'student' | 'faculty' | 'admin'
+  const navigate = useNavigate(); // Hook for redirection
+  const [activeRole, setActiveRole] = useState("student");
+  const [loading, setLoading] = useState(false);
   const [credentials, setCredentials] = useState({
     id: "",
     password: ""
@@ -12,10 +14,44 @@ const Login = () => {
     setCredentials({ ...credentials, [e.target.name]: e.target.value });
   };
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    // Placeholder for backend logic
-    alert(`Logging in as ${activeRole.toUpperCase()}\nID: ${credentials.id}`);
+    setLoading(true);
+
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: credentials.id,
+          password: credentials.password,
+          role: activeRole
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // 1. Save User Data to Local Storage
+        localStorage.setItem("currentUser", JSON.stringify(data.user));
+        
+        alert(`✅ Welcome back, ${data.user.name}!`);
+
+        // 2. Redirect based on Role
+        if (activeRole === "admin") {
+          navigate("/admin");
+        } else {
+          navigate("/student-dashboard"); 
+        }
+      } else {
+        alert(`❌ Login Failed: ${data.message}`);
+      }
+    } catch (error) {
+      console.error("Login Error:", error);
+      alert("❌ Server Error: Unable to connect.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Role Configurations (Colors & Labels)
@@ -62,7 +98,8 @@ const Login = () => {
         {/* Header */}
         <div className="text-center">
           <Link to="/" className="inline-block mb-4">
-             <img src="/logo.png" alt="SDJIC Logo" className="h-16 w-auto mx-auto" />
+             {/* Ensure you have a logo image or remove this img tag */}
+             <h1 className="text-2xl font-bold text-gray-800">SDJIC CAMPUS</h1>
           </Link>
           <h2 className="text-3xl font-extrabold text-gray-900">Welcome Back</h2>
           <p className="mt-2 text-sm text-gray-600">Please select your role to login</p>
@@ -73,6 +110,7 @@ const Login = () => {
           {["student", "faculty", "admin"].map((role) => (
             <button
               key={role}
+              type="button"
               onClick={() => { setActiveRole(role); setCredentials({id: "", password: ""}); }}
               className={`flex-1 capitalize text-sm font-bold py-2 rounded-lg transition-all duration-300 ${
                 activeRole === role
@@ -108,7 +146,6 @@ const Login = () => {
                     value={credentials.id}
                     onChange={handleChange}
                     className="appearance-none rounded-lg relative block w-full px-10 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all focus:border-transparent"
-                    style={{ '--tw-ring-color': activeRole === 'student' ? '#ef4444' : activeRole === 'faculty' ? '#3b82f6' : '#1f2937' }}
                     placeholder={currentConfig.placeholder}
                   />
                 </div>
@@ -135,44 +172,14 @@ const Login = () => {
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className={`h-4 w-4 rounded border-gray-300 focus:ring-opacity-50 ${currentConfig.text}`}
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                Remember me
-              </label>
-            </div>
-
-            <div className="text-sm">
-              {/* FIXED: Replaced <a> with <button> to solve ESLint anchor-is-valid error */}
-              <button 
-                type="button"
-                className={`font-medium hover:underline bg-transparent border-none p-0 cursor-pointer ${currentConfig.text}`}
-                onClick={() => alert("Forgot Password functionality coming soon!")}
-              >
-                Forgot password?
-              </button>
-            </div>
-          </div>
-
           <button
             type="submit"
-            className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 ${currentConfig.color} ${currentConfig.hover}`}
+            disabled={loading}
+            className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 ${currentConfig.color} ${currentConfig.hover} ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
           >
-            Sign in as {activeRole.charAt(0).toUpperCase() + activeRole.slice(1)}
+            {loading ? "Verifying..." : `Sign in as ${activeRole.charAt(0).toUpperCase() + activeRole.slice(1)}`}
           </button>
         </form>
-
-        <div className="text-center mt-4">
-          <p className="text-xs text-gray-500">
-            By logging in, you agree to our <span className="underline cursor-pointer hover:text-gray-700">Terms of Service</span> and <span className="underline cursor-pointer hover:text-gray-700">Privacy Policy</span>.
-          </p>
-        </div>
 
       </div>
     </div>

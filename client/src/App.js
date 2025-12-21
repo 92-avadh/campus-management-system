@@ -1,6 +1,6 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-
+import StudentDashboard from "./pages/StudentDashboard";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import Home from "./pages/Home";
@@ -28,7 +28,8 @@ function App() {
             <Route path="/campus" element={<Campus />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/admin" element={<AdminDashboard />} /> {/* <--- ADD THIS ROUTE */}
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/student-dashboard" element={<StudentDashboard />} />
           </Routes>
         </main>
 

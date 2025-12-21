@@ -2,12 +2,13 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const path = require("path"); // Required for serving uploaded files
+const path = require("path"); 
+const paymentRoutes = require("./routes/paymentRoutes");
 
 // --- IMPORT ROUTES ---
 const adminRoutes = require("./routes/adminRoutes");
 const studentRoutes = require("./routes/studentRoutes");
-
+const authRoutes = require("./routes/authRoutes"); 
 // Load environment variables from .env file
 dotenv.config();
 
@@ -31,6 +32,8 @@ mongoose.connect(process.env.MONGO_URI)
 // --- ROUTES ---
 app.use("/api/admin", adminRoutes);     // For Admin Dashboard (Approve/Reject)
 app.use("/api/student", studentRoutes); // For Public "Apply Now" Form
+app.use("/api/auth", authRoutes);       // For Login (Students/Faculty/Admin)
+app.use("/api/payment", paymentRoutes);
 
 // Test Route
 app.get("/", (req, res) => {

@@ -114,5 +114,58 @@ router.post("/reject-student/:id", async (req, res) => {
     res.status(500).json({ message: "Error rejecting application" });
   }
 });
+// --- ROUTE 4: Add Faculty Member ---
+router.post("/add-faculty", async (req, res) => {
+  try {
+    const { name, email, phone, department, designation } = req.body;
 
+    // 1. Check if email exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) return res.status(400).json({ message: "Email already exists" });
+
+    // 2. Generate Faculty ID (e.g., FAC + Random 3 digits)
+    // In a real app, you would count documents to increment, but random is fine for now.
+    const facultyId = "FAC" + Math.floor(100 + Math.random() * 900);
+
+    // 3. Generate Password
+    const rawPassword = Math.random().toString(36).slice(-8);
+    const hashedPassword = await bcrypt.hash(rawPassword, 10);
+
+    // 4. Create User
+    const newFaculty = new User({
+      name,
+      email,
+      phone,
+      department,
+      role: "faculty",
+      userId: facultyId,
+      password: hashedPassword
+    });
+    
+    await newFaculty.save();
+
+    // 5. Send Email
+    // Re-using our sendStatusEmail helper but tweaking the message slightly
+    // Note: You might want to update sendStatusEmail to handle a "faculty" type if you want specific text.
+    // For now, we will send a direct mail here for simplicity or reuse the helper if it's flexible.
+    
+    const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+    });
+
+    await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: "Faculty Appointment - SDJIC",
+        text: `Dear ${name},\n\nYou have been appointed as ${designation} in the ${department} department.\n\nHere are your Login Credentials:\nUser ID: ${facultyId}\nPassword: ${rawPassword}\n\nPlease login at: http://localhost:3000/login`
+    });
+
+    res.json({ message: "Faculty Added Successfully", facultyId });
+
+  } catch (error) {
+    console.error("Error adding faculty:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+});
 module.exports = router;

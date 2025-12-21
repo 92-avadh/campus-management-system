@@ -3,7 +3,13 @@ import React, { useState, useEffect } from "react";
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("applications"); // Default to pending applications
   const [applications, setApplications] = useState([]);
+  // eslint-disable-next-line no-unused-vars
   const [loading, setLoading] = useState(false);
+  
+  // State for Faculty Form
+  const [facultyForm, setFacultyForm] = useState({
+    name: "", email: "", phone: "", department: "", designation: ""
+  });
 
   // --- 1. FETCH PENDING APPLICATIONS ON LOAD ---
   useEffect(() => {
@@ -54,6 +60,27 @@ const AdminDashboard = () => {
     }
   };
 
+  // --- 4. HANDLE ADD FACULTY ---
+  const handleAddFaculty = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch("http://localhost:5000/api/admin/add-faculty", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(facultyForm)
+      });
+      const data = await response.json();
+      if (response.ok) {
+        alert(`✅ Faculty Added!\nID: ${data.facultyId}`);
+        setFacultyForm({ name: "", email: "", phone: "", department: "", designation: "" }); // Reset Form
+      } else {
+        alert("Error: " + data.message);
+      }
+    } catch (error) {
+      alert("Server Error: Unable to add faculty.");
+    }
+  };
+
   // --- HELPER: Fix Image URLs (Windows/Mac path issues) ---
   const getFileUrl = (path) => {
     if (!path) return "#";
@@ -94,7 +121,7 @@ const AdminDashboard = () => {
             </button>
           </div>
 
-          {/* CONTENT: Admission Requests Table */}
+          {/* TAB CONTENT 1: Admission Requests Table */}
           {activeTab === "applications" && (
             <div className="p-6">
               {applications.length === 0 ? (
@@ -180,11 +207,95 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {/* CONTENT: Add Faculty Form (Kept from previous version) */}
+          {/* TAB CONTENT 2: Add Faculty Form */}
           {activeTab === "faculty" && (
-            <div className="p-10 text-center text-gray-500">
-              <p>Faculty Registration Form goes here.</p>
-              {/* You can re-paste the Faculty form logic here if you still need it manually */}
+            <div className="p-10">
+              <div className="max-w-2xl mx-auto">
+                <div className="text-center mb-10">
+                  <h2 className="text-2xl font-bold text-gray-900">Add New Faculty Member</h2>
+                  <p className="text-gray-500">Create login credentials for teaching staff.</p>
+                </div>
+
+                <form onSubmit={handleAddFaculty} className="space-y-6 bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
+                  
+                  {/* Name & Email Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">Full Name</label>
+                      <input 
+                        required 
+                        type="text" 
+                        placeholder="Dr. Amit Shah"
+                        className="w-full border px-4 py-2 rounded-lg outline-none focus:border-blue-500 transition-colors"
+                        value={facultyForm.name}
+                        onChange={(e) => setFacultyForm({...facultyForm, name: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">Email</label>
+                      <input 
+                        required 
+                        type="email" 
+                        placeholder="faculty@college.edu"
+                        className="w-full border px-4 py-2 rounded-lg outline-none focus:border-blue-500 transition-colors"
+                        value={facultyForm.email}
+                        onChange={(e) => setFacultyForm({...facultyForm, email: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Phone & Department Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">Phone</label>
+                      <input 
+                        required 
+                        type="tel" 
+                        placeholder="9876543210"
+                        className="w-full border px-4 py-2 rounded-lg outline-none focus:border-blue-500 transition-colors"
+                        value={facultyForm.phone}
+                        onChange={(e) => setFacultyForm({...facultyForm, phone: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">Department</label>
+                      <select 
+                        required
+                        className="w-full border px-4 py-2 rounded-lg outline-none focus:border-blue-500 bg-white transition-colors"
+                        value={facultyForm.department}
+                        onChange={(e) => setFacultyForm({...facultyForm, department: e.target.value})}
+                      >
+                        <option value="">Select Department</option>
+                        <option value="Computer Science">Computer Science</option>
+                        <option value="Management">Management</option>
+                        <option value="Commerce">Commerce</option>
+                        <option value="Engineering">Engineering</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Designation */}
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Designation</label>
+                    <input 
+                      required 
+                      type="text" 
+                      placeholder="e.g. Senior Professor"
+                      className="w-full border px-4 py-2 rounded-lg outline-none focus:border-blue-500 transition-colors"
+                      value={facultyForm.designation}
+                      onChange={(e) => setFacultyForm({...facultyForm, designation: e.target.value})}
+                    />
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    className="w-full bg-blue-700 text-white font-bold py-3 rounded-xl hover:bg-blue-800 transition-colors shadow-lg shadow-blue-500/30"
+                  >
+                    + Create Faculty Account
+                  </button>
+
+                </form>
+              </div>
             </div>
           )}
 
