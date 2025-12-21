@@ -1,7 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import ApplyModal from "../components/ApplyModal"; // <--- IMPORT THIS
 
 const Home = () => {
+  // State for opening the Apply Modal
+  const [isApplyOpen, setIsApplyOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-white flex flex-col font-sans">
 
@@ -10,7 +14,7 @@ const Home = () => {
         {/* Background Image */}
         <div className="absolute inset-0">
           <img
-            src="https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2070"
+            src="/hero-bg.jpg"
             alt="University Campus"
             className="w-full h-full object-cover"
           />
@@ -37,24 +41,26 @@ const Home = () => {
             </p>
 
             <div className="flex flex-wrap gap-4">
+              {/* PRIMARY ACTION: Apply Now (Opens Modal) */}
+              <button
+                onClick={() => setIsApplyOpen(true)}
+                className="bg-red-600 text-white px-8 py-3.5 rounded-lg font-bold hover:bg-red-700 transition-all shadow-[0_4px_14px_0_rgba(220,38,38,0.39)]"
+              >
+                Apply Now
+              </button>
+
               <Link
                 to="/courses"
                 className="bg-white text-red-900 px-8 py-3.5 rounded-lg font-bold hover:bg-gray-100 transition-all shadow-[0_4px_14px_0_rgba(255,255,255,0.39)]"
               >
                 Explore Courses
               </Link>
-              <Link
-                to="/contact"
-                className="border-2 border-white text-white px-8 py-3.5 rounded-lg font-bold hover:bg-white/10 transition-colors"
-              >
-                Visit Campus
-              </Link>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ================= NEWS & EVENTS (NEW) ================= */}
+      {/* ================= NEWS & EVENTS ================= */}
       <section className="py-24 bg-gray-50">
         <div className="container mx-auto px-6">
           <div className="flex justify-between items-end mb-12">
@@ -125,7 +131,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* ================= RESEARCH HIGHLIGHT (NEW) ================= */}
+      {/* ================= RESEARCH HIGHLIGHT ================= */}
       <section className="py-24 bg-gray-900 text-white overflow-hidden relative">
         {/* Background Pattern */}
         <div className="absolute top-0 right-0 w-1/2 h-full bg-gray-800/50 skew-x-12 transform translate-x-20"></div>
@@ -184,7 +190,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* ================= STUDENT VOICES (NEW) ================= */}
+      {/* ================= STUDENT VOICES ================= */}
       <section className="py-24 bg-white">
         <div className="container mx-auto px-6 text-center">
           <h2 className="text-red-900 text-sm font-bold uppercase tracking-widest mb-3">Student Voices</h2>
@@ -264,7 +270,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* ================= CTA SECTION (NEW) ================= */}
+      {/* ================= CTA SECTION ================= */}
       <section className="py-20 bg-gray-100">
         <div className="container mx-auto px-6">
           <div className="bg-white rounded-3xl p-10 md:p-16 shadow-2xl flex flex-col md:flex-row items-center justify-between relative overflow-hidden">
@@ -279,9 +285,14 @@ const Home = () => {
             </div>
             
             <div className="relative z-10 flex flex-col sm:flex-row gap-4">
-              <Link to="/apply" className="bg-red-700 text-white px-8 py-4 rounded-xl font-bold hover:bg-red-800 transition-all text-center">
+              {/* Apply Button calls setIsApplyOpen(true) instead of navigating */}
+              <button 
+                onClick={() => setIsApplyOpen(true)}
+                className="bg-red-700 text-white px-8 py-4 rounded-xl font-bold hover:bg-red-800 transition-all text-center"
+              >
                 Apply Now
-              </Link>
+              </button>
+              
               <Link to="/contact" className="bg-gray-100 text-gray-800 px-8 py-4 rounded-xl font-bold hover:bg-gray-200 transition-all text-center">
                 Download Brochure
               </Link>
@@ -289,6 +300,12 @@ const Home = () => {
           </div>
         </div>
       </section>
+
+      {/* ================= APPLY MODAL ================= */}
+      <ApplyModal 
+        isOpen={isApplyOpen} 
+        onClose={() => setIsApplyOpen(false)} 
+      />
 
     </div>
   );

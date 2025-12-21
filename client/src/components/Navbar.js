@@ -6,12 +6,8 @@ const Navbar = () => {
     <nav className="bg-red-900/95 backdrop-blur-md text-white shadow-md sticky top-0 z-50 transition-all duration-300">
       <div className="container mx-auto px-6 py-3 flex justify-between items-center">
 
-        {/* Logo Section - TEXT REMOVED */}
+        {/* Logo Section */}
         <Link to="/" className="flex items-center hover:opacity-90 transition-opacity">
-          {/* - Removed text <span> tags.
-              - Increased height to h-16 (64px) so the text inside the logo is readable.
-              - 'w-auto' ensures it doesn't get stretched.
-          */}
           <img 
             src="/logo.png" 
             alt="SDJ International College" 
@@ -24,6 +20,7 @@ const Navbar = () => {
           <Link to="/" className="hover:text-red-200 transition-colors">HOME</Link>
           <Link to="/about" className="hover:text-red-200 transition-colors">ABOUT</Link>
           <Link to="/courses" className="hover:text-red-200 transition-colors">COURSES</Link>
+          <Link to="/campus" className="hover:text-red-200 transition-colors">CAMPUS</Link> {/* <--- NEW TAB */}
           <Link to="/contact" className="hover:text-red-200 transition-colors">CONTACT</Link>
 
           {/* Login Button */}
