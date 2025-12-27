@@ -5,8 +5,11 @@ const cors = require("cors");
 
 // 👇 IMPORT ROUTES
 const authRoutes = require("./routes/authRoutes");
-const adminRoutes = require("./routes/adminRoutes"); // <--- ADDED THIS
+const adminRoutes = require("./routes/adminRoutes");
 const studentRoutes = require("./routes/studentRoutes");
+const paymentRoutes = require("./routes/paymentRoutes");
+const courseRoutes = require("./routes/courseRoutes"); // <--- WAS MISSING
+
 dotenv.config();
 
 const app = express();
@@ -21,8 +24,11 @@ app.use(express.json());
 
 // --- 2. ROUTES ---
 app.use("/api/auth", authRoutes);
-app.use("/api/admin", adminRoutes); // <--- ADDED THIS (Connects the Dashboard)
+app.use("/api/admin", adminRoutes);
 app.use("/api/applications", studentRoutes);
+app.use("/api/payment", paymentRoutes);
+app.use("/api/courses", courseRoutes); // <--- WAS MISSING
+
 // --- 3. DATABASE CONNECTION ---
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB Connected"))

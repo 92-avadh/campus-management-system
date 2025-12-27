@@ -21,13 +21,31 @@ const seedData = async () => {
     await Course.deleteMany({});
     // We do NOT delete Users here to keep your login safe!
 
-    // 2. CREATE COURSES
+    // 2. CREATE COURSES (Now with Subjects)
     await Course.insertMany([
-      { name: "BCA", duration: "3 Years", fees: 45000, hod: "Dr. Sharma" },
-      { name: "BBA", duration: "3 Years", fees: 40000, hod: "Prof. Mehta" },
-      { name: "B.Com", duration: "3 Years", fees: 30000, hod: "Dr. Patel" }
+      { 
+        name: "BCA", 
+        duration: "3 Years", 
+        fees: 45000, 
+        hod: "Dr. Sharma",
+        subjects: ["C Programming", "Web Development", "Database Management", "Mathematics", "Communication Skills"]
+      },
+      { 
+        name: "BBA", 
+        duration: "3 Years", 
+        fees: 40000, 
+        hod: "Prof. Mehta",
+        subjects: ["Principles of Management", "Financial Accounting", "Marketing", "Business Statistics", "Economics"] 
+      },
+      { 
+        name: "B.Com", 
+        duration: "3 Years", 
+        fees: 30000, 
+        hod: "Dr. Patel",
+        subjects: ["Accounting", "Corporate Law", "Auditing", "Taxation", "Banking & Finance"] 
+      }
     ]);
-    console.log("📚 Courses Table Created.");
+    console.log("📚 Courses Table Created with Subjects.");
 
     // 3. CREATE NOTICES
     await Notice.insertMany([

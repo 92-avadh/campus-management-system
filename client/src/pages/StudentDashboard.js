@@ -1,111 +1,169 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import FeePayment from "../components/FeePayment"; // <--- Import the Payment Component
+import FeePayment from "../components/FeePayment"; 
+import ThemeToggle from "../components/ThemeToggle"; 
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [activeTab, setActiveTab] = useState("dashboard");
+  
+  // New State for Subjects
+  const [subjects, setSubjects] = useState([]);
 
-  // 1. Check Login Status on Load
+  // 1. Check Login & Fetch Subjects
   useEffect(() => {
     const storedUser = localStorage.getItem("currentUser");
     if (!storedUser) {
-      navigate("/login"); // Redirect if not logged in
+      navigate("/login");
     } else {
-      setUser(JSON.parse(storedUser));
+      const userData = JSON.parse(storedUser);
+      setUser(userData);
+
+      // ONLY Fetch subjects if Fee is Paid
+      if (userData.isFeePaid) {
+        fetch(`http://localhost:5000/api/courses/${userData.course}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.subjects) setSubjects(data.subjects);
+          })
+          .catch(err => console.error("Error loading subjects:", err));
+      }
     }
   }, [navigate]);
 
-  // 2. Logout Handler
   const handleLogout = () => {
     localStorage.removeItem("currentUser");
     navigate("/login");
   };
 
-  if (!user) return null; // Show nothing while checking
+  if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans p-8">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans flex transition-colors duration-300">
+      
+      {/* SIDEBAR */}
+      <aside className="w-64 bg-red-900 dark:bg-black text-white flex flex-col shadow-2xl sticky top-0 h-screen z-20 transition-colors">
+        <div className="p-6 border-b border-red-800 dark:border-gray-800">
+          <h2 className="text-2xl font-bold tracking-wider">STUDENT<br/><span className="text-red-300 text-lg">PANEL</span></h2>
+        </div>
+        <nav className="flex-1 p-4 space-y-2">
+          {["dashboard", "subjects", "attendance", "fees"].map((tab) => (
+            <button 
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center capitalize
+                ${activeTab === tab ? "bg-white text-red-900 font-bold" : "hover:bg-red-800 dark:hover:bg-gray-800 text-red-100"}`}
+            >
+              {tab === "fees" ? "💳 Fee Payment" : 
+               tab === "subjects" ? "📚 My Subjects" : 
+               tab === "attendance" ? "📅 Attendance" : "📊 Dashboard"}
+            </button>
+          ))}
+        </nav>
+        <div className="p-6 border-t border-red-800 dark:border-gray-800">
+          <button onClick={handleLogout} className="w-full bg-red-800 hover:bg-red-700 dark:bg-gray-800 dark:hover:bg-gray-700 py-3 rounded text-sm font-bold shadow-inner transition">LOGOUT</button>
+        </div>
+      </aside>
+
+      {/* MAIN CONTENT */}
+      <div className="flex-1 flex flex-col h-screen overflow-y-auto bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white transition-colors">
         
-        {/* Header Section */}
-        <header className="flex justify-between items-center mb-8 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        {/* HEADER */}
+        <header className="bg-white dark:bg-gray-800 shadow-sm p-4 flex justify-between items-center sticky top-0 z-10 transition-colors border-b dark:border-gray-700">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Student Dashboard</h1>
-            <p className="text-gray-500 text-sm">Welcome back, {user.name}</p>
+            <h1 className="text-xl font-bold text-gray-800 dark:text-white">Welcome, {user.name}</h1>
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-mono mt-1">{user.course} | {user.userId}</p>
           </div>
-          <button 
-            onClick={handleLogout} 
-            className="text-red-600 font-bold hover:bg-red-50 px-4 py-2 rounded-lg transition-colors"
-          >
-            Logout 
-          </button>
+          <div className="flex items-center gap-6">
+             <ThemeToggle />
+             <div className="flex items-center gap-3 border-l pl-6 dark:border-gray-600">
+               <span className="text-right text-xs font-bold text-red-900 dark:text-red-400 hidden md:block">SDJ INTERNATIONAL<br/>COLLEGE</span>
+               <img src="/logo.png" alt="Logo" className="h-12 w-auto bg-white rounded shadow-sm border p-1" />
+            </div>
+          </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="p-8">
           
-          {/* LEFT COLUMN: Student Profile Card */}
-          <div className="md:col-span-1 space-y-6">
-            <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 text-center">
-              <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-4 border-4 border-white shadow-sm">
-                🎓
-              </div>
-              <h2 className="text-xl font-bold text-gray-900">{user.name}</h2>
-              <p className="text-sm text-gray-500 mb-4">{user.course} Student</p>
-              
-              <div className="text-left space-y-3 bg-gray-50 p-4 rounded-xl text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Student ID:</span>
-                  <span className="font-bold text-gray-900">{user.userId}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Role:</span>
-                  <span className="font-bold uppercase text-red-600">{user.role}</span>
+          {/* 1. DASHBOARD VIEW */}
+          {activeTab === "dashboard" && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="md:col-span-1 space-y-6">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 text-center transition-colors">
+                  <div className="w-24 h-24 bg-red-50 dark:bg-gray-700 rounded-full flex items-center justify-center text-4xl mx-auto mb-4 border-4 border-white dark:border-gray-600 shadow-sm">🎓</div>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">{user.name}</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{user.course} Student</p>
+                  <div className="text-left bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl text-sm">
+                     <p className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">ID:</span> <span className="font-bold">{user.userId}</span></p>
+                     <p className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Fee Status:</span> <span className={user.isFeePaid ? "text-green-500 font-bold" : "text-red-500 font-bold"}>{user.isFeePaid ? "PAID" : "PENDING"}</span></p>
+                  </div>
                 </div>
               </div>
+
+              <div className="md:col-span-2 space-y-6">
+                 {/* IF FEE IS PAID -> SHOW SUBJECTS WIDGET */}
+                 {user.isFeePaid ? (
+                   <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border-l-4 border-green-500 transition-colors">
+                      <h3 className="font-bold text-xl mb-4 flex items-center text-gray-800 dark:text-white">
+                        <span className="bg-green-100 text-green-600 p-2 rounded-lg mr-3">📚</span>
+                        Your {user.course} Subjects
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        {subjects.map((sub, idx) => (
+                          <div key={idx} className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg font-medium text-gray-700 dark:text-gray-200 border border-gray-100 dark:border-gray-600">
+                            📖 {sub}
+                          </div>
+                        ))}
+                      </div>
+                   </div>
+                 ) : (
+                   <div className="bg-red-50 dark:bg-red-900/20 p-6 rounded-2xl border border-red-200 dark:border-red-800 text-center">
+                      <h3 className="text-red-700 dark:text-red-400 font-bold text-lg">⚠️ Subjects Locked</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">Please pay your admission fees to view your course subjects and start your classes.</p>
+                   </div>
+                 )}
+
+                 <FeePayment user={user} />
+              </div>
             </div>
+          )}
 
-            {/* Contact Support Box */}
-            <div className="bg-blue-900 text-white p-6 rounded-2xl shadow-lg">
-              <h3 className="font-bold mb-2">Need Help?</h3>
-              <p className="text-blue-200 text-sm mb-4">Contact the admin office for any issues regarding fees or marks.</p>
-              <button className="w-full bg-white text-blue-900 font-bold py-2 rounded-lg text-sm hover:bg-blue-50 transition-colors">
-                Contact Admin
-              </button>
+          {/* 2. SUBJECTS TAB (Detailed View) */}
+          {activeTab === "subjects" && (
+            <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg transition-colors">
+               {user.isFeePaid ? (
+                 <>
+                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">📚 Course Curriculum: {user.course}</h2>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {subjects.map((sub, idx) => (
+                        <div key={idx} className="flex items-center p-5 bg-gray-50 dark:bg-gray-700/50 rounded-xl border hover:border-red-300 dark:hover:border-red-500 transition shadow-sm">
+                          <div className="w-12 h-12 bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300 rounded-full flex items-center justify-center font-bold text-xl mr-4">
+                            {idx + 1}
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-lg text-gray-800 dark:text-white">{sub}</h4>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Core Subject</p>
+                          </div>
+                        </div>
+                      ))}
+                   </div>
+                 </>
+               ) : (
+                 <div className="text-center py-20">
+                    <div className="text-6xl mb-4">🔒</div>
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Content Locked</h2>
+                    <p className="text-gray-500 dark:text-gray-400 mt-2">Complete your fee payment to access course materials.</p>
+                 </div>
+               )}
             </div>
-          </div>
+          )}
+          
+          {/* Other Tabs */}
+          {activeTab === "attendance" && <div className="p-10 bg-white dark:bg-gray-800 rounded-2xl shadow text-center dark:text-white">Attendance Module Coming Soon</div>}
+          {activeTab === "fees" && <div className="max-w-2xl mx-auto"><FeePayment user={user} /></div>}
 
-          {/* RIGHT COLUMN: Fee Status & Notices */}
-          <div className="md:col-span-2 space-y-6">
-            
-            {/* 1. FEE PAYMENT COMPONENT (The one we just built) */}
-            <FeePayment user={user} />
-
-            {/* 2. Important Notices (Static for now) */}
-            <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
-              <h3 className="font-bold text-gray-900 mb-4 flex items-center">
-                <span className="bg-red-100 p-2 rounded-lg mr-3 text-red-600">📢</span>
-                Important Notices
-              </h3>
-              <ul className="space-y-4">
-                <li className="flex items-start text-sm text-gray-600 pb-4 border-b border-gray-50">
-                  <span className="font-bold text-red-500 mr-2">•</span>
-                  Orientation program for new batch starts on 15th August.
-                </li>
-                <li className="flex items-start text-sm text-gray-600 pb-4 border-b border-gray-50">
-                  <span className="font-bold text-red-500 mr-2">•</span>
-                  Please submit your original documents to the admin office before the semester begins.
-                </li>
-                <li className="flex items-start text-sm text-gray-600">
-                  <span className="font-bold text-red-500 mr-2">•</span>
-                  Library cards will be issued after fee payment verification.
-                </li>
-              </ul>
-            </div>
-
-          </div>
         </div>
-
       </div>
     </div>
   );
