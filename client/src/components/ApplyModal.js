@@ -44,7 +44,7 @@ const ApplyModal = ({ isOpen, onClose, defaultCourse = "" }) => {
     try {
       // Note: We do NOT set 'Content-Type': 'application/json' here.
       // The browser automatically sets the correct Multipart boundary for files.
-      const response = await fetch("http://localhost:5000/api/student/apply", {
+      const response = await fetch("http://localhost:5000/api/applications/apply", {
         method: "POST",
         body: data 
       });

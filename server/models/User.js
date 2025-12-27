@@ -4,17 +4,23 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   phone: { type: String, required: true },
-  role: { type: String, enum: ["student", "faculty", "admin"], required: true },
-  
-  // This will store Enrollment No. (Student) or Employee ID (Faculty)
+  role: { type: String, required: true, enum: ["admin", "student", "faculty"] },
   userId: { type: String, required: true, unique: true },
-  
   password: { type: String, required: true },
   
-  // Optional fields
-  course: { type: String }, // For students
-  department: { type: String }, // For faculty
-  isPasswordChanged: { type: Boolean, default: false } // Force change on first login
-}, { timestamps: true });
+  // Student Specific
+  course: { type: String },
+  department: { type: String },
+  percentage: { type: Number },
+  isFeePaid: { type: Boolean, default: false },
+  
+  // Documents
+  photo: { type: String },
+  marksheet: { type: String },
+
+  // OTP FIELDS (New)
+  otp: { type: String },
+  otpExpires: { type: Date }
+});
 
 module.exports = mongoose.model("User", userSchema);

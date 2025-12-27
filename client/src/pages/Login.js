@@ -1,25 +1,26 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom"; 
+import { useNavigate } from "react-router-dom"; 
 
 const Login = () => {
-  const navigate = useNavigate(); // Hook for redirection
+  const navigate = useNavigate();
   const [activeRole, setActiveRole] = useState("student");
+  const [step, setStep] = useState(1); // Step 1: ID/Pass, Step 2: OTP
   const [loading, setLoading] = useState(false);
-  const [credentials, setCredentials] = useState({
-    id: "",
-    password: ""
-  });
+  
+  const [credentials, setCredentials] = useState({ id: "", password: "" });
+  const [otp, setOtp] = useState("");
+  const [maskedEmail, setMaskedEmail] = useState("");
 
   const handleChange = (e) => {
     setCredentials({ ...credentials, [e.target.name]: e.target.value });
   };
 
-  const handleLogin = async (e) => {
+  // --- STEP 1: VALIDATE PASSWORD & SEND OTP ---
+  const handleStep1 = async (e) => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      const response = await fetch("http://localhost:5000/api/auth/login-step1", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -28,158 +29,122 @@ const Login = () => {
           role: activeRole
         })
       });
-
       const data = await response.json();
-
       if (response.ok) {
-        // 1. Save User Data to Local Storage
-        localStorage.setItem("currentUser", JSON.stringify(data.user));
-        
-        alert(`✅ Welcome back, ${data.user.name}!`);
-
-        // 2. Redirect based on Role
-        if (activeRole === "admin") {
-          navigate("/admin");
-        } else {
-          navigate("/student-dashboard"); 
-        }
+        setMaskedEmail(data.email); // Store email to show "Sent to a***@gmail.com"
+        setStep(2); // Move to OTP Screen
       } else {
-        alert(`❌ Login Failed: ${data.message}`);
+        alert("❌ Error: " + data.message);
       }
     } catch (error) {
-      console.error("Login Error:", error);
-      alert("❌ Server Error: Unable to connect.");
+      alert("Server Error");
     } finally {
       setLoading(false);
     }
   };
 
-  // Role Configurations (Colors & Labels)
-  const roleConfig = {
-    student: {
-      color: "bg-red-700",
-      hover: "hover:bg-red-800",
-      light: "bg-red-50",
-      border: "border-red-200",
-      text: "text-red-700",
-      label: "Enrollment Number",
-      placeholder: "e.g. 2025001"
-    },
-    faculty: {
-      color: "bg-blue-700",
-      hover: "hover:bg-blue-800",
-      light: "bg-blue-50",
-      border: "border-blue-200",
-      text: "text-blue-700",
-      label: "Employee ID",
-      placeholder: "e.g. FAC101"
-    },
-    admin: {
-      color: "bg-gray-800",
-      hover: "hover:bg-gray-900",
-      light: "bg-gray-50",
-      border: "border-gray-200",
-      text: "text-gray-800",
-      label: "Admin Username",
-      placeholder: "e.g. admin_main"
+  // --- STEP 2: VERIFY OTP ---
+  const handleStep2 = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/login-step2", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: credentials.id,
+          otp: otp
+        })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        localStorage.setItem("currentUser", JSON.stringify(data.user));
+        if (activeRole === "faculty") navigate("/faculty-dashboard");
+        else navigate("/student-dashboard");
+      } else {
+        alert("❌ " + data.message);
+      }
+    } catch (error) {
+      alert("Server Error");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const currentConfig = roleConfig[activeRole];
+  // Role Styles
+  const isFaculty = activeRole === "faculty";
+  const themeColor = isFaculty ? "bg-blue-700" : "bg-red-700";
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans">
-      
-      <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-3xl shadow-2xl relative overflow-hidden">
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 font-sans">
+      <div className="bg-white w-full max-w-md p-8 rounded-3xl shadow-xl">
         
-        {/* Decorative Top Bar */}
-        <div className={`absolute top-0 left-0 w-full h-2 ${currentConfig.color} transition-colors duration-300`}></div>
-
         {/* Header */}
-        <div className="text-center">
-          <Link to="/" className="inline-block mb-4">
-             {/* Ensure you have a logo image or remove this img tag */}
-             <h1 className="text-2xl font-bold text-gray-800">SDJIC CAMPUS</h1>
-          </Link>
-          <h2 className="text-3xl font-extrabold text-gray-900">Welcome Back</h2>
-          <p className="mt-2 text-sm text-gray-600">Please select your role to login</p>
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">SDJIC Login</h1>
+          <p className="text-sm text-gray-500">Secure 2-Step Verification</p>
         </div>
 
-        {/* Role Tabs */}
-        <div className="flex justify-center bg-gray-100 p-1 rounded-xl">
-          {["student", "faculty", "admin"].map((role) => (
-            <button
-              key={role}
-              type="button"
-              onClick={() => { setActiveRole(role); setCredentials({id: "", password: ""}); }}
-              className={`flex-1 capitalize text-sm font-bold py-2 rounded-lg transition-all duration-300 ${
-                activeRole === role
-                  ? "bg-white text-gray-900 shadow-sm transform scale-105"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              {role}
-            </button>
-          ))}
-        </div>
-
-        {/* Login Form */}
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-          
-          <div className={`rounded-xl p-6 border-2 transition-colors duration-300 ${currentConfig.light} ${currentConfig.border}`}>
-            <h3 className={`text-center font-bold text-lg uppercase tracking-wider mb-6 ${currentConfig.text}`}>
-              {activeRole} Login
-            </h3>
-
-            <div className="space-y-4">
-              {/* ID Input */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {currentConfig.label}
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-3 text-gray-400">👤</span>
-                  <input
-                    name="id"
-                    type="text"
-                    required
-                    value={credentials.id}
-                    onChange={handleChange}
-                    className="appearance-none rounded-lg relative block w-full px-10 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all focus:border-transparent"
-                    placeholder={currentConfig.placeholder}
-                  />
-                </div>
-              </div>
-
-              {/* Password Input */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Password
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-3 text-gray-400">🔒</span>
-                  <input
-                    name="password"
-                    type="password"
-                    required
-                    value={credentials.password}
-                    onChange={handleChange}
-                    className="appearance-none rounded-lg relative block w-full px-10 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all focus:border-transparent"
-                    placeholder="••••••••"
-                  />
-                </div>
-              </div>
+        {/* Step 1 Form */}
+        {step === 1 && (
+          <>
+            {/* Tabs */}
+            <div className="flex mb-6 bg-gray-100 p-1 rounded-lg">
+              {["student", "faculty"].map((role) => (
+                <button
+                  key={role}
+                  onClick={() => setActiveRole(role)}
+                  className={`flex-1 py-2 text-sm font-bold capitalize rounded-md transition-all ${activeRole === role ? "bg-white shadow-sm text-black" : "text-gray-500"}`}
+                >
+                  {role}
+                </button>
+              ))}
             </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 ${currentConfig.color} ${currentConfig.hover} ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
-          >
-            {loading ? "Verifying..." : `Sign in as ${activeRole.charAt(0).toUpperCase() + activeRole.slice(1)}`}
-          </button>
-        </form>
+            <form onSubmit={handleStep1} className="space-y-4">
+              <input 
+                name="id" required placeholder={`${activeRole} ID`} 
+                className="w-full p-3 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={handleChange}
+              />
+              <input 
+                name="password" type="password" required placeholder="Password" 
+                className="w-full p-3 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={handleChange}
+              />
+              <button type="submit" disabled={loading} className={`w-full py-3 text-white font-bold rounded-xl ${themeColor}`}>
+                {loading ? "Sending OTP..." : "Next ➜"}
+              </button>
+            </form>
+          </>
+        )}
+
+        {/* Step 2 Form (OTP) */}
+        {step === 2 && (
+          <form onSubmit={handleStep2} className="space-y-6 animate-fade-in">
+            <div className="text-center bg-green-50 text-green-700 p-3 rounded-lg text-sm">
+              ✅ OTP sent to your email!<br/>
+              <span className="font-mono text-xs text-gray-500">({maskedEmail})</span>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1">Enter OTP</label>
+              <input 
+                type="text" required maxLength="6" placeholder="123456"
+                className="w-full p-4 text-center text-2xl tracking-widest border-2 border-gray-300 rounded-lg outline-none focus:border-green-500"
+                value={otp} onChange={(e) => setOtp(e.target.value)}
+              />
+            </div>
+
+            <button type="submit" disabled={loading} className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg">
+              {loading ? "Verifying..." : "Verify & Login"}
+            </button>
+            
+            <button type="button" onClick={() => setStep(1)} className="w-full text-xs text-gray-400 hover:text-gray-600">
+              ← Back to Login
+            </button>
+          </form>
+        )}
 
       </div>
     </div>
