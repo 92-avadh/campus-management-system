@@ -2,13 +2,14 @@ const express = require("express");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const cors = require("cors");
+const path = require("path"); // <--- 1. IMPORT THIS (Required for file paths)
 
 // 👇 IMPORT ROUTES
 const authRoutes = require("./routes/authRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const studentRoutes = require("./routes/studentRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
-const courseRoutes = require("./routes/courseRoutes"); // <--- WAS MISSING
+const courseRoutes = require("./routes/courseRoutes");
 
 dotenv.config();
 
@@ -22,12 +23,15 @@ app.use(cors({
 
 app.use(express.json()); 
 
+// 👇 2. THIS LINE IS CRITICAL - IT MAKES IMAGES VISIBLE 👇
+app.use("/uploads", express.static(path.join(__dirname, "uploads"))); 
+
 // --- 2. ROUTES ---
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/applications", studentRoutes);
 app.use("/api/payment", paymentRoutes);
-app.use("/api/courses", courseRoutes); // <--- WAS MISSING
+app.use("/api/courses", courseRoutes);
 
 // --- 3. DATABASE CONNECTION ---
 mongoose.connect(process.env.MONGO_URI)
