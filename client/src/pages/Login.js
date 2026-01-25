@@ -58,7 +58,7 @@ const Login = () => {
       });
       const data = await response.json();
       if (response.ok) {
-        localStorage.setItem("currentUser", JSON.stringify(data.user));
+        sessionStorage.setItem("currentUser", JSON.stringify(data.user));
         if (activeRole === "faculty") navigate("/faculty-dashboard");
         else navigate("/student-dashboard");
       } else {

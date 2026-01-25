@@ -4,7 +4,7 @@ const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 const User = require("../models/User");
 
-// Transporter for Email (Kept for future use)
+// Transporter for Email
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -18,36 +18,27 @@ router.post("/login-step1", async (req, res) => {
   try {
     const { userId, password, role } = req.body;
     
-    // 1. Find User
     const user = await User.findOne({ userId });
     if (!user) return res.status(400).json({ message: "Invalid User ID" });
-
-    // 2. Check Role
     if (user.role !== role) return res.status(400).json({ message: "Role mismatch" });
 
-    // 3. Check Password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid Password" });
 
-    // 4. Generate OTP (6 Digits)
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     
-    // 5. Save OTP to DB (Expires in 5 minutes)
     user.otp = otp;
     user.otpExpires = Date.now() + 5 * 60 * 1000; // 5 mins
     await user.save();
 
-    // 6. FAST OTP (Console Log Only - No Email Delay)
-    console.log("====================================");
     console.log(`🚀 FAST OTP for ${user.email}: ${otp}`);
-    console.log("====================================");
 
-    /* // --- TEMPORARILY DISABLED REAL EMAIL FOR SPEED ---
+    /* // Enable for Real Email
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: user.email,
-      subject: "Your Login OTP - SDJIC Campus",
-      text: `Hello ${user.name},\n\nYour OTP for login is: ${otp}\n\nDo not share this with anyone. Valid for 5 minutes.`
+      subject: "Your Login OTP",
+      text: `Your OTP is: ${otp}`
     });
     */
 
@@ -67,17 +58,9 @@ router.post("/login-step2", async (req, res) => {
     const user = await User.findOne({ userId });
     if (!user) return res.status(400).json({ message: "User not found" });
 
-    // Check OTP
-    if (user.otp !== otp) {
-      return res.status(400).json({ message: "Invalid OTP" });
-    }
+    if (user.otp !== otp) return res.status(400).json({ message: "Invalid OTP" });
+    if (Date.now() > user.otpExpires) return res.status(400).json({ message: "OTP Expired" });
 
-    // Check Expiry
-    if (Date.now() > user.otpExpires) {
-      return res.status(400).json({ message: "OTP Expired. Please try again." });
-    }
-
-    // Success! Clear OTP
     user.otp = undefined;
     user.otpExpires = undefined;
     await user.save();
@@ -91,12 +74,56 @@ router.post("/login-step2", async (req, res) => {
         role: user.role,
         department: user.department,
         userId: user.userId,
-        isFeePaid: user.isFeePaid
+        isFeePaid: user.isFeePaid,
+        course: user.course // Added course for student context
       }
     });
 
   } catch (error) {
     res.status(500).json({ message: "Server Error" });
+  }
+});
+
+// --- NEW: CHANGE PASSWORD ---
+router.post("/change-password", async (req, res) => {
+  try {
+    const { userId, oldPassword, newPassword } = req.body;
+    const user = await User.findOne({ userId });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) return res.status(400).json({ message: "Incorrect Old Password" });
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    res.json({ message: "✅ Password Changed Successfully!" });
+  } catch (err) {
+    res.status(500).json({ message: "Server Error" });
+  }
+});
+
+// --- NEW: CONTACT ADMIN ---
+router.post("/contact-admin", async (req, res) => {
+  try {
+    const { userId, subject, message } = req.body;
+    const user = await User.findOne({ userId });
+    
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: process.env.EMAIL_USER, // Sends email to Admin (Self)
+      subject: `[SUPPORT] ${subject} - from ${user.name} (${user.role.toUpperCase()})`,
+      text: `User Details:\nName: ${user.name}\nID: ${user.userId}\nRole: ${user.role}\n\nMessage:\n${message}`
+    };
+
+    await transporter.sendMail(mailOptions);
+    res.json({ message: "✅ Message sent to Admin!" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to send email" });
   }
 });
 

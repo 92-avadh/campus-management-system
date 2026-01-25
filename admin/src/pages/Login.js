@@ -46,7 +46,7 @@ const Login = () => {
       const data = await response.json();
 
       if (response.ok) {
-        localStorage.setItem("adminUser", JSON.stringify(data.user));
+        sessionStorage.setItem("adminUser", JSON.stringify(data.user));
         navigate("/dashboard");
       } else {
         alert("❌ Wrong OTP");

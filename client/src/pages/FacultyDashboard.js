@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import ThemeToggle from "../components/ThemeToggle";
 
 const FacultyDashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [students, setStudents] = useState([]);
+  const [activeTab, setActiveTab] = useState("dashboard");
 
+  // --- 1. INITIAL LOAD ---
   useEffect(() => {
-    // 1. Check Login
-    const storedUser = localStorage.getItem("currentUser");
+    const storedUser = sessionStorage.getItem("currentUser");
     if (!storedUser) {
       navigate("/login");
     } else {
@@ -18,7 +20,7 @@ const FacultyDashboard = () => {
     }
   }, [navigate]);
 
-  // 2. Fetch Students
+  // --- 2. FETCH STUDENTS ---
   const fetchStudents = async (dept) => {
     try {
       const response = await fetch(`http://localhost:5000/api/faculty/students?department=${dept}`);
@@ -37,89 +39,214 @@ const FacultyDashboard = () => {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans flex transition-colors duration-300">
+      
+      {/* === SIDEBAR PANEL === */}
+      <aside className="w-64 bg-blue-900 dark:bg-black text-white flex flex-col shadow-2xl sticky top-0 h-screen z-20 transition-colors">
+        <div className="p-6 border-b border-blue-800 dark:border-gray-800">
+          <h2 className="text-2xl font-bold tracking-wider">FACULTY<br/><span className="text-blue-300 text-lg">PORTAL</span></h2>
+        </div>
         
-        {/* Header */}
-        <header className="flex justify-between items-center mb-8 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <nav className="flex-1 p-4 space-y-2">
+          <button 
+            onClick={() => setActiveTab("dashboard")} 
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center gap-3 ${activeTab === "dashboard" ? "bg-white text-blue-900 font-bold" : "hover:bg-blue-800 dark:hover:bg-gray-800 text-blue-100"}`}
+          >
+            📊 Dashboard
+          </button>
+          
+          <button 
+            onClick={() => setActiveTab("attendance")} 
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center gap-3 ${activeTab === "attendance" ? "bg-white text-blue-900 font-bold" : "hover:bg-blue-800 dark:hover:bg-gray-800 text-blue-100"}`}
+          >
+            📅 Take Attendance
+          </button>
+
+          <button 
+            onClick={() => setActiveTab("notices")} 
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center gap-3 ${activeTab === "notices" ? "bg-white text-blue-900 font-bold" : "hover:bg-blue-800 dark:hover:bg-gray-800 text-blue-100"}`}
+          >
+            📢 Send Notice
+          </button>
+
+          <button 
+            onClick={() => setActiveTab("material")} 
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center gap-3 ${activeTab === "material" ? "bg-white text-blue-900 font-bold" : "hover:bg-blue-800 dark:hover:bg-gray-800 text-blue-100"}`}
+          >
+            📂 Upload Material
+          </button>
+        </nav>
+
+        <div className="p-6 border-t border-blue-800 dark:border-gray-800">
+          <button onClick={handleLogout} className="w-full bg-blue-800 hover:bg-blue-700 dark:bg-gray-800 dark:hover:bg-gray-700 py-3 rounded text-sm font-bold shadow-inner transition">LOGOUT</button>
+        </div>
+      </aside>
+
+
+      {/* === MAIN CONTENT AREA === */}
+      <div className="flex-1 flex flex-col h-screen overflow-y-auto">
+        
+        {/* HEADER */}
+        <header className="bg-white dark:bg-gray-800 shadow-sm p-4 flex justify-between items-center sticky top-0 z-10 transition-colors border-b dark:border-gray-700">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Faculty Dashboard</h1>
-            <p className="text-gray-500 text-sm">
-              Welcome, <span className="font-bold text-blue-700">{user.name}</span> ({user.department})
+            <h1 className="text-xl font-bold text-gray-800 dark:text-white">
+              {activeTab === 'dashboard' && 'Faculty Dashboard'}
+              {activeTab === 'attendance' && 'Class Attendance'}
+              {activeTab === 'notices' && 'Broadcast Notice'}
+              {activeTab === 'material' && 'Study Materials'}
+            </h1>
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-mono mt-1">
+              {user.name} | {user.department} Department
             </p>
           </div>
-          <button 
-            onClick={handleLogout} 
-            className="text-red-600 font-bold hover:bg-red-50 px-4 py-2 rounded-lg transition-colors"
-          >
-            Logout 
-          </button>
+          <div className="flex items-center gap-6">
+             <ThemeToggle />
+          </div>
         </header>
 
-        {/* Stats Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-blue-600 text-white p-6 rounded-2xl shadow-lg shadow-blue-500/30">
-            <h3 className="text-lg font-semibold opacity-80">Total Students</h3>
-            <p className="text-4xl font-bold">{students.length}</p>
-          </div>
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h3 className="text-gray-500 font-semibold">Department</h3>
-            <p className="text-xl font-bold text-gray-800">{user.department}</p>
-          </div>
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h3 className="text-gray-500 font-semibold">My ID</h3>
-            <p className="text-xl font-bold text-gray-800">{user.userId}</p>
-          </div>
-        </div>
+        <div className="p-8 max-w-7xl mx-auto w-full">
 
-        {/* Student List Table */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-          <div className="p-6 border-b border-gray-100">
-            <h2 className="text-xl font-bold text-gray-800">Enrolled Students</h2>
-          </div>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
-                <tr>
-                  <th className="p-4">Student ID</th>
-                  <th className="p-4">Name</th>
-                  <th className="p-4">Email</th>
-                  <th className="p-4">Course</th>
-                  <th className="p-4">Fee Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {students.map((student) => (
-                  <tr key={student._id} className="hover:bg-gray-50 transition-colors">
-                    <td className="p-4 font-bold text-gray-700">{student.userId}</td>
-                    <td className="p-4 font-semibold">{student.name}</td>
-                    <td className="p-4 text-sm text-gray-500">{student.email}</td>
-                    <td className="p-4">
-                      <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-bold uppercase">
-                        {student.course}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      {student.isFeePaid ? (
-                        <span className="text-green-600 font-bold text-sm">✅ Paid</span>
-                      ) : (
-                        <span className="text-red-500 font-bold text-sm">❌ Pending</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          
-          {students.length === 0 && (
-            <div className="p-10 text-center text-gray-400">
-              No students found in the database.
+          {/* 1. DASHBOARD VIEW */}
+          {activeTab === "dashboard" && (
+            <>
+              {/* Stats Row */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="bg-blue-600 text-white p-6 rounded-2xl shadow-lg shadow-blue-500/30">
+                  <h3 className="text-lg font-semibold opacity-80">Total Students</h3>
+                  <p className="text-4xl font-bold">{students.length}</p>
+                </div>
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                  <h3 className="text-gray-500 dark:text-gray-400 font-semibold">Department</h3>
+                  <p className="text-xl font-bold text-gray-800 dark:text-white">{user.department}</p>
+                </div>
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                  <h3 className="text-gray-500 dark:text-gray-400 font-semibold">Faculty ID</h3>
+                  <p className="text-xl font-bold text-gray-800 dark:text-white">{user.userId}</p>
+                </div>
+              </div>
+
+              {/* Recent Students Table */}
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
+                <div className="p-6 border-b border-gray-100 dark:border-gray-700">
+                  <h2 className="text-xl font-bold text-gray-800 dark:text-white">My Students</h2>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead className="bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs uppercase tracking-wider">
+                      <tr>
+                        <th className="p-4">Student ID</th>
+                        <th className="p-4">Name</th>
+                        <th className="p-4">Course</th>
+                        <th className="p-4">Fee Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                      {students.map((student) => (
+                        <tr key={student._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                          <td className="p-4 font-bold text-gray-700 dark:text-gray-200">{student.userId}</td>
+                          <td className="p-4 font-semibold text-gray-800 dark:text-gray-200">{student.name}</td>
+                          <td className="p-4"><span className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded text-xs font-bold">{student.course}</span></td>
+                          <td className="p-4">{student.isFeePaid ? "✅ Paid" : "❌ Pending"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* 2. ATTENDANCE VIEW */}
+          {activeTab === "attendance" && (
+            <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
+              <div className="flex justify-between items-center mb-6">
+                 <h2 className="text-xl font-bold text-gray-800 dark:text-white">Daily Attendance</h2>
+                 <input type="date" className="p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600" defaultValue={new Date().toISOString().split('T')[0]} />
+              </div>
+              
+              {students.length === 0 ? (
+                <p className="text-gray-500">No students available for attendance.</p>
+              ) : (
+                <div className="space-y-3">
+                  {students.map(student => (
+                    <div key={student._id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 flex items-center justify-center font-bold">
+                          {student.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-800 dark:text-white">{student.name}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{student.userId}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button className="px-4 py-2 rounded-lg text-sm font-bold bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300">PRESENT</button>
+                        <button className="px-4 py-2 rounded-lg text-sm font-bold bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300">ABSENT</button>
+                      </div>
+                    </div>
+                  ))}
+                  <button className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition">Submit Attendance Sheet</button>
+                </div>
+              )}
             </div>
           )}
-        </div>
 
+          {/* 3. NOTICES VIEW (UPDATED DROPDOWN) */}
+          {activeTab === "notices" && (
+            <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
+              <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-6">Create New Notice</h2>
+              <form className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Notice Title</label>
+                  <input type="text" placeholder="e.g. Mid-Sem Exam Schedule" className="w-full p-3 rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Notice Content</label>
+                  <textarea rows="4" placeholder="Enter full details here..." className="w-full p-3 rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                </div>
+                
+                {/* 👇 UPDATED DROPDOWN HERE 👇 */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Target Audience</label>
+                  <select className="w-full p-3 rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                    <option>All Students</option>
+                    <option>Classes</option>
+                  </select>
+                </div>
+
+                <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition">Publish Notice</button>
+              </form>
+            </div>
+          )}
+
+          {/* 4. MATERIALS VIEW */}
+          {activeTab === "material" && (
+            <div className="max-w-3xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 text-center">
+              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-2xl p-10 bg-gray-50 dark:bg-gray-700/30">
+                <div className="text-6xl mb-4">📂</div>
+                <h2 className="text-xl font-bold text-gray-800 dark:text-white">Upload Study Material</h2>
+                <p className="text-gray-500 dark:text-gray-400 mb-6">Drag & drop PDF notes or assignments here</p>
+                <input type="file" className="hidden" id="fileUpload" />
+                <label htmlFor="fileUpload" className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition">
+                  Browse Files
+                </label>
+              </div>
+              
+              <div className="mt-8 text-left">
+                <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Recently Uploaded</h3>
+                <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg flex justify-between items-center mb-2">
+                  <span className="font-bold text-gray-700 dark:text-gray-200">Unit-1-Introduction.pdf</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Uploaded Yesterday</span>
+                </div>
+                <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg flex justify-between items-center">
+                  <span className="font-bold text-gray-700 dark:text-gray-200">Assignment-2.pdf</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Uploaded 2 days ago</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
       </div>
     </div>
   );

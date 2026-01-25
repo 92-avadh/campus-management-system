@@ -11,8 +11,10 @@ const Dashboard = () => {
   const [showMenu, setShowMenu] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState(""); 
+  
+  // REMOVED userId and password from state (handled by server now)
   const [formData, setFormData] = useState({
-    name: "", email: "", phone: "", userId: "", password: "", department: ""
+    name: "", email: "", phone: "", department: ""
   });
 
   // --- FETCH APPLICATIONS ---
@@ -53,6 +55,7 @@ const Dashboard = () => {
   const handleAddUser = async (e) => {
     e.preventDefault();
     try {
+      // POST without userId/password (Backend handles it)
       const res = await fetch("http://localhost:5000/api/admin/add-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -60,9 +63,9 @@ const Dashboard = () => {
       });
       const data = await res.json();
       if (res.ok) {
-        alert("✅ " + modalType.toUpperCase() + " Added!");
+        alert("✅ " + modalType.toUpperCase() + " Added! Credentials sent to email.");
         setShowModal(false);
-        setFormData({ name: "", email: "", phone: "", userId: "", password: "", department: "" });
+        setFormData({ name: "", email: "", phone: "", department: "" });
       } else {
         alert("❌ Error: " + data.message);
       }
@@ -104,9 +107,19 @@ const Dashboard = () => {
 
       {/* MAIN CONTENT */}
       <main className="p-8 max-w-6xl mx-auto">
-        <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-6 border-l-4 border-red-600 pl-3">
-          Pending Admission Requests
-        </h2>
+        
+        {/* HEADER WITH REFRESH BUTTON */}
+        <div className="flex justify-between items-center mb-6 border-l-4 border-red-600 pl-3">
+          <h2 className="text-xl font-bold text-gray-800 dark:text-white">
+            Pending Admission Requests
+          </h2>
+          <button 
+            onClick={fetchApplications} 
+            className="flex items-center gap-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-white px-4 py-2 rounded-lg text-sm font-bold transition"
+          >
+            🔄 Refresh Data
+          </button>
+        </div>
 
         {applications.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400 italic">No pending applications.</p>
@@ -117,7 +130,7 @@ const Dashboard = () => {
                 <tr>
                   <th className="p-4">Name</th>
                   <th className="p-4">Course</th>
-                  <th className="p-4">Documents</th> {/* <--- ADDED HEADER */}
+                  <th className="p-4">Documents</th>
                   <th className="p-4 text-center">Actions</th>
                 </tr>
               </thead>
@@ -130,16 +143,26 @@ const Dashboard = () => {
                     </td>
                     <td className="p-4">{app.course}</td>
                     
-                    {/* 👇 ADDED DOCUMENTS COLUMN 👇 */}
+                    {/* DOCUMENTS COLUMN (With path fix) */}
                     <td className="p-4 text-sm space-x-3">
                       {app.photo ? (
-                        <a href={`http://localhost:5000/uploads/${app.photo}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline font-bold">
+                        <a 
+                          href={`http://localhost:5000/${app.photo.replace(/\\/g, "/")}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-blue-600 dark:text-blue-400 hover:underline font-bold"
+                        >
                           📸 Photo
                         </a>
                       ) : <span className="text-gray-400">No Photo</span>}
                       
                       {app.marksheet ? (
-                         <a href={`http://localhost:5000/uploads/${app.marksheet}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline font-bold">
+                         <a 
+                           href={`http://localhost:5000/${app.marksheet.replace(/\\/g, "/")}`} 
+                           target="_blank" 
+                           rel="noopener noreferrer" 
+                           className="text-blue-600 dark:text-blue-400 hover:underline font-bold"
+                         >
                            📄 Marksheet
                          </a>
                       ) : <span className="text-gray-400">No Sheet</span>}
@@ -167,18 +190,22 @@ const Dashboard = () => {
           <div className="bg-white dark:bg-gray-800 w-full max-w-lg p-8 rounded-2xl shadow-2xl relative">
             <button onClick={() => setShowModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-red-600 text-2xl">&times;</button>
             <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6 capitalize">Add New {modalType}</h2>
+            
             <form onSubmit={handleAddUser} className="space-y-4">
               <input required placeholder="Full Name" className="w-full p-3 bg-gray-50 dark:bg-gray-700 dark:text-white border dark:border-gray-600 rounded outline-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+              
               <div className="flex gap-4">
                 <input required placeholder="Email" type="email" className="w-1/2 p-3 bg-gray-50 dark:bg-gray-700 dark:text-white border dark:border-gray-600 rounded outline-none" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
                 <input required placeholder="Phone" className="w-1/2 p-3 bg-gray-50 dark:bg-gray-700 dark:text-white border dark:border-gray-600 rounded outline-none" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
               </div>
-              <div className="flex gap-4">
-                <input required placeholder="User ID" className="w-1/2 p-3 bg-gray-50 dark:bg-gray-700 dark:text-white border dark:border-gray-600 rounded outline-none uppercase font-mono" value={formData.userId} onChange={e => setFormData({...formData, userId: e.target.value})} />
-                <input required placeholder="Password" type="password" className="w-1/2 p-3 bg-gray-50 dark:bg-gray-700 dark:text-white border dark:border-gray-600 rounded outline-none" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
-              </div>
-              <input required placeholder="Department" className="w-full p-3 bg-gray-50 dark:bg-gray-700 dark:text-white border dark:border-gray-600 rounded outline-none" value={formData.department} onChange={e => setFormData({...formData, department: e.target.value})} />
-              <button className="w-full bg-red-700 hover:bg-red-800 text-white font-bold py-3 rounded mt-4">Create Account</button>
+
+              {/* Removed ID/Password Inputs - Handled by Server */}
+              
+              <input required placeholder="Department (e.g. Computer Science)" className="w-full p-3 bg-gray-50 dark:bg-gray-700 dark:text-white border dark:border-gray-600 rounded outline-none" value={formData.department} onChange={e => setFormData({...formData, department: e.target.value})} />
+              
+              <button className="w-full bg-red-700 hover:bg-red-800 text-white font-bold py-3 rounded mt-4">
+                Auto-Generate & Email Credentials
+              </button>
             </form>
           </div>
         </div>

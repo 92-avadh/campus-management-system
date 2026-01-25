@@ -1,68 +1,47 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import axios from "axios"; // Ensure axios is installed in your client folder
 
-const ApplyModal = ({ isOpen, onClose, defaultCourse = "" }) => {
-  const [loading, setLoading] = useState(false);
-  
-  // State for Text Fields
+const ApplyModal = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
-    name: "", email: "", phone: "", course: defaultCourse || "",
-    dob: "", gender: "", address: "", percentage: ""
+    name: "",
+    email: "",
+    phone: "",
+    course: "BCA (Computer Applications)",
+    percentage: "",
   });
+  const [photo, setPhoto] = useState(null);
+  const [marksheet, setMarksheet] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  // State for Files (Separate because they are objects, not strings)
-  const [files, setFiles] = useState({
-    photo: null,
-    marksheet: null
-  });
-
-  useEffect(() => {
-    if (defaultCourse) setFormData(prev => ({ ...prev, course: defaultCourse }));
-  }, [defaultCourse]);
-
-  // Handle Text Inputs
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  // Handle File Inputs
-  const handleFileChange = (e) => {
-    setFiles({ ...files, [e.target.name]: e.target.files[0] });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    // --- CREATE FORM DATA (Required for sending files) ---
+    // Using FormData to handle file uploads
     const data = new FormData();
-    // Append text fields
-    Object.keys(formData).forEach(key => data.append(key, formData[key]));
-    // Append files
-    if (files.photo) data.append("photo", files.photo);
-    if (files.marksheet) data.append("marksheet", files.marksheet);
+    data.append("name", formData.name);
+    data.append("email", formData.email);
+    data.append("phone", formData.phone);
+    data.append("course", formData.course);
+    data.append("percentage", formData.percentage);
+    if (photo) data.append("photo", photo);
+    if (marksheet) data.append("marksheet", marksheet);
 
     try {
-      // Note: We do NOT set 'Content-Type': 'application/json' here.
-      // The browser automatically sets the correct Multipart boundary for files.
-      const response = await fetch("http://localhost:5000/api/applications/apply", {
-        method: "POST",
-        body: data 
+      // POST to your studentRoutes endpoint
+      await axios.post("http://localhost:5000/api/applications/apply", data, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        alert("✅ Application Submitted Successfully!");
-        // Reset Form
-        setFormData({ name: "", email: "", phone: "", course: "", dob: "", gender: "", address: "", percentage: "" });
-        setFiles({ photo: null, marksheet: null });
-        onClose();
-      } else {
-        alert(`❌ Error: ${result.message}`);
-      }
-    } catch (error) {
-      console.error("Submission Error:", error);
-      alert("❌ Server Error: Check backend connection.");
+      alert("Application Submitted Successfully!");
+      onClose();
+    } catch (err) {
+      console.error(err);
+      alert("Error submitting application.");
     } finally {
       setLoading(false);
     }
@@ -71,111 +50,66 @@ const ApplyModal = ({ isOpen, onClose, defaultCourse = "" }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-y-auto max-h-[90vh] animate-fadeIn">
-        
-        {/* Header */}
-        <div className="bg-red-900 p-6 flex justify-between items-center text-white">
-          <div>
-            <h2 className="text-2xl font-bold">Student Admission Form</h2>
-            <p className="text-red-200 text-sm">Please upload valid documents.</p>
-          </div>
-          <button onClick={onClose} className="text-2xl hover:text-red-200">✕</button>
-        </div>
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-slate-950/60 backdrop-blur-md"
+        />
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-8 space-y-6">
-          
-          {/* Section 1: Personal Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Full Name</label>
-              <input type="text" name="name" required value={formData.name} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-200 outline-none" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Date of Birth</label>
-              <input type="date" name="dob" required value={formData.dob} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-200 outline-none" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Gender</label>
-              <select name="gender" required value={formData.gender} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-red-200 outline-none">
-                <option value="">Select Gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-              </select>
-            </div>
-             <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Course Applied For</label>
-              <select name="course" required value={formData.course} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-red-200 outline-none">
-                <option value="">Select Course</option>
-                <option value="BCA">BCA</option>
-                <option value="BBA">BBA</option>
-                <option value="B.Tech CS">B.Tech CS</option>
-                <option value="B.Com">B.Com</option>
-              </select>
-            </div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          className="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden"
+        >
+          <div className="bg-rose-950 p-8 text-white">
+            <h2 className="text-3xl font-black">Start Your Journey</h2>
+            <button onClick={onClose} className="absolute top-6 right-8 text-rose-200 hover:text-white">✕</button>
           </div>
 
-          {/* Section 2: Contact Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Email</label>
-              <input type="email" name="email" required value={formData.email} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-200 outline-none" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Phone</label>
-              <input type="tel" name="phone" required value={formData.phone} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-200 outline-none" />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Address</label>
-              <textarea name="address" required value={formData.address} onChange={handleChange} rows="2" className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-200 outline-none resize-none"></textarea>
-            </div>
-          </div>
-
-          {/* Section 3: Documents Upload */}
-          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-            <h4 className="font-bold text-gray-900 mb-4 text-sm uppercase">Academic Documents</h4>
+          <form onSubmit={handleSubmit} className="p-10 space-y-6 max-h-[70vh] overflow-y-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Previous Class Score (%)</label>
-                <input type="number" name="percentage" required value={formData.percentage} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-200 outline-none" />
-              </div>
-              
-              {/* FILE INPUT 1: Marksheet */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Upload Marksheet</label>
-                <input 
-                  type="file" 
-                  name="marksheet" 
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  required 
-                  onChange={handleFileChange}
-                  className="w-full px-4 py-2 border rounded-lg bg-white text-sm focus:ring-2 focus:ring-red-200 outline-none" 
-                />
-              </div>
+              <input name="name" onChange={handleChange} required placeholder="Full Name" className="w-full px-5 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-rose-500" />
+              <input name="email" type="email" onChange={handleChange} required placeholder="Email Address" className="w-full px-5 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-rose-500" />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <input name="phone" onChange={handleChange} required placeholder="Phone Number" className="w-full px-5 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-rose-500" />
+              <input name="percentage" type="number" onChange={handleChange} required placeholder="12th Percentage" className="w-full px-5 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-rose-500" />
+            </div>
 
-              {/* FILE INPUT 2: Photo */}
-              <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Upload Student Photo</label>
-                <input 
-                  type="file" 
-                  name="photo" 
-                  accept=".jpg,.jpeg,.png"
-                  required 
-                  onChange={handleFileChange}
-                  className="w-full px-4 py-2 border rounded-lg bg-white text-sm focus:ring-2 focus:ring-red-200 outline-none" 
-                />
+            <select name="course" onChange={handleChange} className="w-full px-5 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none">
+              <option>BCA (Computer Applications)</option>
+              <option>BBA (Business Administration)</option>
+              <option>B.Com (Commerce)</option>
+            </select>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center">
+                <input type="file" onChange={(e) => setPhoto(e.target.files[0])} className="hidden" id="photo-upload" />
+                <label htmlFor="photo-upload" className="cursor-pointer text-xs font-bold text-slate-500 uppercase">
+                  {photo ? photo.name : "Upload Photo"}
+                </label>
+              </div>
+              <div className="border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center">
+                <input type="file" onChange={(e) => setMarksheet(e.target.files[0])} className="hidden" id="marksheet-upload" />
+                <label htmlFor="marksheet-upload" className="cursor-pointer text-xs font-bold text-slate-500 uppercase">
+                  {marksheet ? marksheet.name : "12th Marksheet"}
+                </label>
               </div>
             </div>
-          </div>
 
-          <button type="submit" disabled={loading} className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-700 hover:bg-red-800'}`}>
-            {loading ? "Uploading Documents..." : "Submit Application"}
-          </button>
-
-        </form>
+            <button type="submit" disabled={loading} className="w-full py-4 bg-rose-600 text-white rounded-full font-black text-lg hover:bg-rose-700 transition-all">
+              {loading ? "Submitting..." : "Submit Application"}
+            </button>
+          </form>
+        </motion.div>
       </div>
-    </div>
+    </AnimatePresence>
   );
 };
 

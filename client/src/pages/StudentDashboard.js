@@ -13,7 +13,7 @@ const StudentDashboard = () => {
 
   // 1. Check Login & Fetch Subjects
   useEffect(() => {
-    const storedUser = localStorage.getItem("currentUser");
+    const storedUser = sessionStorage.getItem("currentUser");
     if (!storedUser) {
       navigate("/login");
     } else {
