@@ -5,33 +5,83 @@ const nodemailer = require("nodemailer");
 const User = require("../models/User");
 const Application = require("../models/Application");
 
-// --- 1. GENERIC EMAIL FUNCTION (For Students, Faculty & Admin) ---
-const sendCredentialsEmail = async (email, name, userId, password, role) => {
+// --- 📧 EMAIL HELPER: PROFESSIONAL APPROVAL ---
+const sendApprovalEmail = async (email, name, userId, password, course) => {
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
   });
 
-  const subject = role === "student" 
-    ? "Admission Approved - SDJIC" 
-    : "Faculty/Admin Account Created - SDJIC";
+  const mailOptions = {
+    from: `"SDJIC Admissions" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: `Congratulations! Your Admission to SDJIC is Approved`,
+    text: `Dear ${name},
 
-  const message = `Dear ${name},\n\nYour account has been successfully created as a ${role.toUpperCase()}.\n\nHere are your Login Credentials:\nUser ID: ${userId}\nPassword: ${password}\n\nLogin here: http://localhost:3000/login`;
+We are delighted to inform you that after a thorough review of your application and academic credentials, you have been granted admission to the ${course} program at SDJ International College (SDJIC).
+
+Welcome to our academic community! We were highly impressed with your academic background and believe you will be a valuable addition to our campus. 
+
+To help you get started with your journey, we have created your official student account. Please find your login credentials below:
+
+Portal URL: http://localhost:3000/login
+User ID: ${userId}
+Temporary Password: ${password}
+
+Please log in at your earliest convenience to complete your enrollment, pay any pending fees, and access your student dashboard. We look forward to seeing you on campus and supporting you in achieving your educational goals.
+
+Warm regards,
+
+Admissions Department
+SDJ International College (SDJIC)`
+  };
 
   try {
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: subject,
-      text: message
-    });
-    console.log(`✅ Email sent to ${email}`);
+    await transporter.sendMail(mailOptions);
   } catch (err) {
-    console.log("❌ Email error:", err.message);
+    console.log("Approval Email error:", err.message);
   }
 };
 
-// --- 2. GET PENDING APPLICATIONS ---
+// --- 📧 EMAIL HELPER: PROFESSIONAL REJECTION ---
+const sendRejectionEmail = async (email, name, course, reason) => {
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+  });
+
+  const mailOptions = {
+    from: `"SDJIC Admissions" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: `Admission Decision: ${course} Program - SDJIC`,
+    text: `Dear ${name},
+
+Thank you for providing us with the opportunity to review your application for the ${course} program at SDJIC for the upcoming academic session. We truly appreciate the time and effort you put into your submission and for choosing our institution as a potential destination for your higher education.
+
+Our admissions committee has carefully reviewed your academic profile, including your merit scores and supporting documentation. Every year, we receive a significant number of applications from many talented individuals, making our selection process incredibly challenging. Our goal is to build a diverse and academically driven cohort that aligns with the rigorous standards of our various departments.
+
+After a thorough evaluation of the current applicant pool, we regret to inform you that we are unable to offer you admission at this time. This decision was based on the following specific observation regarding your application:
+
+👉 ${reason}
+
+Please understand that this decision is specific to the current application cycle and does not reflect your future potential as a student. We highly encourage you to address the points mentioned above and consider re-applying to our program once you have updated your information or documentation.
+
+We wish you the very best in your academic pursuits and all your future endeavors.
+
+Sincerely,
+
+The Admissions Committee
+SDJ International College (SDJIC)`
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+  } catch (err) {
+    console.log("Rejection Email error:", err.message);
+  }
+};
+
+// --- 1. GET PENDING APPLICATIONS ---
 router.get("/applications", async (req, res) => {
   try {
     const apps = await Application.find({ status: "pending" });
@@ -41,18 +91,16 @@ router.get("/applications", async (req, res) => {
   }
 });
 
-// --- 3. APPROVE STUDENT ---
+// --- 2. APPROVE STUDENT ---
 router.post("/approve/:id", async (req, res) => {
   try {
     const app = await Application.findById(req.params.id);
     if (!app) return res.status(404).json({ message: "Application not found" });
 
-    // Generate Student ID (Year + Count)
+    // Generate unique Student ID
     const currentYear = new Date().getFullYear();
     const count = await User.countDocuments({ role: "student" });
-    const newId = `${currentYear}${String(count + 1).padStart(3, '0')}`; // e.g., 2025001
-    
-    // Generate Random Password
+    const newId = `${currentYear}${String(count + 1).padStart(3, '0')}`; 
     const rawPassword = Math.random().toString(36).slice(-8);
     const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
@@ -64,76 +112,43 @@ router.post("/approve/:id", async (req, res) => {
       userId: newId,
       password: hashedPassword,
       course: app.course,
-      department: "N/A",
       isFeePaid: false,
       photo: app.photo,
       marksheet: app.marksheet
     });
 
-    await newUser.save();
-    
-    app.status = "approved";
+    await newUser.save(); //
+    app.status = "approved"; //
     await app.save();
 
-    // Send Email
-    await sendCredentialsEmail(app.email, app.name, newId, rawPassword, "student");
-
-    res.json({ message: "Student Approved! Credentials Emailed." });
-
+    await sendApprovalEmail(app.email, app.name, newId, rawPassword, app.course);
+    res.json({ message: "Student Approved. Credentials have been emailed." });
   } catch (err) {
-    console.error(err);
+    console.error("Approval Error:", err);
     res.status(500).json({ message: "Server Error" });
   }
 });
 
-// --- 4. REJECT APPLICATION ---
+// --- 3. REJECT APPLICATION (With Professional Reason & Auto-Delete) ---
 router.post("/reject/:id", async (req, res) => {
   try {
-    await Application.findByIdAndUpdate(req.params.id, { status: "rejected" });
-    res.json({ message: "Application Rejected" });
-  } catch (err) {
-    res.status(500).json({ message: "Server Error" });
-  }
-});
-
-// --- 5. ADD FACULTY/ADMIN (Auto-Generate Credentials) ---
-router.post("/add-user", async (req, res) => {
-   try {
-    // Removed userId and password from request body
-    const { name, email, phone, role, department } = req.body;
+    const { reason } = req.body;
     
-    // Check if email already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ message: "Email already registered!" });
+    // 1. Find the application before deletion
+    const app = await Application.findById(req.params.id);
+    if (!app) return res.status(404).json({ message: "Application not found" });
 
-    // Generate ID based on Role
-    const currentYear = new Date().getFullYear();
-    const count = await User.countDocuments({ role: role });
-    
-    // Prefix: FAC for Faculty, ADM for Admin
-    const prefix = role === "faculty" ? "FAC" : "ADM";
-    const newId = `${prefix}${currentYear}${String(count + 1).padStart(3, '0')}`; // e.g., FAC2025001
+    const studentEmail = app.email;
 
-    // Generate Password
-    const rawPassword = Math.random().toString(36).slice(-8);
-    const hashedPassword = await bcrypt.hash(rawPassword, 10);
+    // 2. Send the professional, multi-paragraph rejection email
+    await sendRejectionEmail(studentEmail, app.name, app.course, reason || "Documents provided do not meet criteria.");
 
-    const newUser = new User({ 
-      name, email, phone, role, 
-      userId: newId, 
-      password: hashedPassword, 
-      department: department || "N/A", 
-      course: "N/A" 
-    });
+    // 3. CRITICAL: Delete record to clear index for re-application
+    await Application.deleteOne({ email: studentEmail });
 
-    await newUser.save();
-
-    // Send Email
-    await sendCredentialsEmail(email, name, newId, rawPassword, role);
-
-    res.json({ message: `${role.toUpperCase()} Added! Credentials Sent.` });
+    res.json({ message: "Application Rejected. Record cleared for re-application." });
   } catch (err) {
-    console.error(err);
+    console.error("Rejection Route Error:", err);
     res.status(500).json({ message: "Server Error" });
   }
 });

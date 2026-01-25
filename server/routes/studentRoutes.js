@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require("multer");
 const path = require("path");
 const Application = require("../models/Application");
+const User = require("../models/User"); // ADDED: Need to check if user already exists
 
 // --- 1. CONFIGURATION FOR FILE UPLOAD ---
 const storage = multer.diskStorage({
@@ -21,13 +22,20 @@ router.post("/apply", upload.fields([{ name: "photo" }, { name: "marksheet" }]),
   try {
     const { name, email, phone, course, dob, gender, address, percentage } = req.body;
 
+    // 1. Check if they already have an APPROVED account in User collection
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      return res.status(400).json({ message: "You are already an enrolled student!" });
+    }
+
+    // 2. Check if they have a PENDING application
+    const existingApp = await Application.findOne({ email });
+    if (existingApp) {
+      return res.status(400).json({ message: "You have already applied with this email! Please wait for admin review." });
+    }
+
     const photoPath = req.files["photo"] ? req.files["photo"][0].path : null;
     const marksheetPath = req.files["marksheet"] ? req.files["marksheet"][0].path : null;
-
-    const existing = await Application.findOne({ email });
-    if (existing) {
-      return res.status(400).json({ message: "You have already applied with this email!" });
-    }
 
     const newApp = new Application({ 
       name, email, phone, course, 

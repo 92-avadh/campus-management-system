@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import logo from "../logo3.png"; // Ensure this file exists in src
+import logo from "../logo3.png"; 
 
 const Login = () => {
   const navigate = useNavigate();
@@ -18,16 +18,19 @@ const Login = () => {
       const response = await fetch("http://localhost:5000/api/auth/login-step1", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, password, role: "admin" })
+        body: JSON.stringify({ userId, password, role: "admin" }) // Role must match DB
       });
+
+      const data = await response.json();
 
       if (response.ok) {
         setStep(2); 
       } else {
-        alert("❌ Invalid ID or Password");
+        // This will now show the specific error (e.g., "Role mismatch" or "Invalid ID")
+        alert(`❌ Login Failed: ${data.message}`);
       }
     } catch (err) {
-      alert("⚠️ Server Error");
+      alert("⚠️ Server Connection Error");
     } finally {
       setLoading(false);
     }
@@ -46,23 +49,22 @@ const Login = () => {
       const data = await response.json();
 
       if (response.ok) {
-        sessionStorage.setItem("adminUser", JSON.stringify(data.user));
+        // FIXED: Using localStorage to match Dashboard.js auth check
+        localStorage.setItem("adminUser", JSON.stringify(data.user));
         navigate("/dashboard");
       } else {
-        alert("❌ Wrong OTP");
+        alert(`❌ OTP Error: ${data.message}`);
       }
     } catch (err) {
-      alert("Server Error");
+      alert("⚠️ Server Error during verification");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    // CHANGED: Background is now gray-100 (Light), not black
     <div className="min-h-screen bg-gray-100 flex items-center justify-center font-sans">
       
-      {/* CHANGED: Card is White with Red Border */}
       <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-sm flex flex-col items-center border-t-8 border-red-700">
         
         {/* LOGO AREA */}
@@ -84,8 +86,9 @@ const Login = () => {
               <label className="text-gray-600 text-xs font-bold uppercase tracking-wider block mb-1">Admin ID</label>
               <input 
                 type="text" 
-                className="w-full bg-gray-50 text-gray-900 p-4 rounded-xl border border-gray-200 focus:border-red-600 focus:ring-2 focus:ring-red-100 outline-none transition font-medium"
+                className="w-full bg-gray-50 text-gray-900 p-4 rounded-xl border border-gray-200 focus:border-red-600 outline-none transition font-medium"
                 placeholder="userID"
+                value={userId}
                 onChange={(e) => setUserId(e.target.value)}
                 required
               />
@@ -94,46 +97,46 @@ const Login = () => {
               <label className="text-gray-600 text-xs font-bold uppercase tracking-wider block mb-1">Password</label>
               <input 
                 type="password" 
-                className="w-full bg-gray-50 text-gray-900 p-4 rounded-xl border border-gray-200 focus:border-red-600 focus:ring-2 focus:ring-red-100 outline-none transition font-medium"
+                className="w-full bg-gray-50 text-gray-900 p-4 rounded-xl border border-gray-200 focus:border-red-600 outline-none transition font-medium"
                 placeholder="••••••"
+                value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>
             <button 
               disabled={loading}
-              className="w-full bg-red-700 hover:bg-red-800 text-white font-bold py-4 rounded-xl transition shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              className="w-full bg-red-700 hover:bg-red-800 text-white font-bold py-4 rounded-xl transition shadow-lg active:scale-95 disabled:opacity-50"
             >
-              {loading ? "Authenticating..." : "Login Securely"}
+              {loading ? "Checking Credentials..." : "Login Securely"}
             </button>
           </form>
         )}
 
         {/* STEP 2 FORM (OTP) */}
         {step === 2 && (
-          <form onSubmit={handleStep2} className="w-full space-y-6 text-center animate-fade-in">
+          <form onSubmit={handleStep2} className="w-full space-y-6 text-center">
             <div className="bg-red-50 p-4 rounded-lg text-sm text-red-800 border border-red-100">
-              ⚡ Code sent to server console
+              ⚡ Check your server console for the OTP code
             </div>
 
-            {/* OTP INPUT - Clean & Modern */}
             <div>
                 <input 
                 type="text" 
-                name="otp_field" 
                 autoComplete="off"              
                 maxLength="6"
-                className="w-full bg-white text-gray-900 text-3xl text-center tracking-[1rem] p-4 rounded-xl border-2 border-gray-200 focus:border-red-600 outline-none font-bold placeholder-gray-300"
+                className="w-full bg-white text-gray-900 text-3xl text-center tracking-[0.5rem] p-4 rounded-xl border-2 border-gray-200 focus:border-red-600 outline-none font-bold placeholder-gray-300"
                 placeholder="------"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
                 autoFocus
+                required
                 />
             </div>
 
             <button 
               disabled={loading}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl transition shadow-lg"
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl transition shadow-lg active:scale-95 disabled:opacity-50"
             >
               {loading ? "Verifying..." : "Verify & Access"}
             </button>
@@ -149,9 +152,8 @@ const Login = () => {
         )}
       </div>
       
-      {/* Footer text */}
       <div className="absolute bottom-6 text-gray-400 text-xs">
-        &copy; 2025 SDJIC Campus System
+        &copy; 2026 SDJIC Campus System
       </div>
     </div>
   );

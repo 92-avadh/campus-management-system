@@ -1,126 +1,70 @@
 import React, { useState } from "react";
+import axios from "axios";
 
-const FeePayment = ({ user }) => {
+const FeePayment = ({ studentId, amount, onPageRefresh }) => {
+  // FIXED: These are now used in the handlePayment function below
   const [loading, setLoading] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [paymentStep, setPaymentStep] = useState("select"); // select -> processing -> success
 
-  // Fake Payment Handler
-  const handleMockPayment = async () => {
-    setPaymentStep("processing");
-    
-    // 1. Fake Delay (2 Seconds)
-    setTimeout(async () => {
-      
-      try {
-        // 2. Call Backend
-        const response = await fetch("http://localhost:5000/api/payment/pay-mock", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: user.userId, // Ensure we send the correct User ID
-            amount: 50000,
-            paymentMode: "Mock Card"
-          })
-        });
+  const handlePayment = async () => {
+    setLoading(true); // Start loading
+    try {
+      // Step 1: Create Order on Server
+      const res = await axios.post("http://localhost:5000/api/payment/checkout", {
+        amount,
+        studentId,
+      });
 
-        if (response.ok) {
-          setPaymentStep("success");
+      const { order } = res.data;
 
-          // 👇 THIS IS THE FIX: Update Local Storage immediately!
-          const currentUser = JSON.parse(localStorage.getItem("currentUser"));
-          if (currentUser) {
-            currentUser.isFeePaid = true; // Manually set to true
-            localStorage.setItem("currentUser", JSON.stringify(currentUser));
+      // Step 2: Open Razorpay Checkout
+      const options = {
+        key: "YOUR_RAZORPAY_KEY", // Should be in your .env
+        amount: order.amount,
+        currency: "INR",
+        name: "SDJIC Campus",
+        description: "Admission Fee Payment",
+        order_id: order.id,
+        handler: async (response) => {
+          try {
+            await axios.post("http://localhost:5000/api/payment/verify", {
+              ...response,
+              studentId,
+            });
+            alert("✅ Payment Successful!");
+            onPageRefresh(); // Refresh student dashboard data
+          } catch (err) {
+            alert("❌ Verification Failed");
           }
+        },
+        theme: { color: "#991b1b" }, // Red-900 to match your theme
+      };
 
-          // Reload page to show new Subject Dashboard
-          setTimeout(() => window.location.reload(), 2000);
-
-        } else {
-          alert("Payment Failed");
-          setPaymentStep("select");
-        }
-      } catch (error) {
-        console.error(error);
-        alert("Server Error");
-        setPaymentStep("select");
-      }
-
-    }, 2000);
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (error) {
+      console.error("Payment Error:", error);
+      alert("Failed to initiate payment. Please try again.");
+    } finally {
+      setLoading(false); // Stop loading regardless of success or failure
+    }
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 text-center transition-colors">
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Admission Fee Status</h2>
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-xl">
+      <h3 className="text-xl font-bold dark:text-white mb-2">Pending Fees</h3>
+      <p className="text-3xl font-black text-red-700 mb-6">₹{amount}</p>
       
-      {/* CASE 1: ALREADY PAID */}
-      {user.isFeePaid ? (
-        <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 p-4 rounded-xl border border-green-200 dark:border-green-800">
-          <div className="text-4xl mb-2">✅</div>
-          <p className="font-bold">Admission Fees Paid</p>
-          <p className="text-xs mt-1">Transaction ID: {user.paymentId || "MOCK_TXN"}</p>
-        </div>
-      ) : (
-        /* CASE 2: PENDING PAYMENT */
-        <div>
-          <p className="text-gray-500 dark:text-gray-400 mb-6">
-            Total Amount: <span className="text-gray-900 dark:text-white font-bold text-xl">₹50,000</span>
-          </p>
-          <button
-            onClick={() => setShowModal(true)}
-            className="bg-red-700 text-white px-8 py-3 rounded-full font-bold hover:bg-red-800 transition-all shadow-lg hover:shadow-red-500/30"
-          >
-            Pay Admission Fees
-          </button>
-        </div>
-      )}
-
-      {/* --- MOCK PAYMENT MODAL --- */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden relative animate-scale-up">
-            
-            <div className="bg-gray-900 text-white p-4 flex justify-between items-center">
-              <span className="font-bold">Secure Payment Gateway</span>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white">✕</button>
-            </div>
-
-            <div className="p-6">
-              {paymentStep === "select" && (
-                <div className="space-y-4">
-                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">Select a payment method:</p>
-                  <div className="space-y-2">
-                    <button onClick={handleMockPayment} className="w-full flex items-center p-3 border dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-800 dark:text-white">
-                      <span className="text-2xl mr-3">💳</span>
-                      <div className="text-left"><div className="font-bold text-sm">Credit / Debit Card</div></div>
-                    </button>
-                    <button onClick={handleMockPayment} className="w-full flex items-center p-3 border dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-800 dark:text-white">
-                      <span className="text-2xl mr-3">📱</span>
-                      <div className="text-left"><div className="font-bold text-sm">UPI / QR Code</div></div>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {paymentStep === "processing" && (
-                <div className="text-center py-8">
-                  <div className="w-12 h-12 border-4 border-red-200 border-t-red-700 rounded-full animate-spin mx-auto mb-4"></div>
-                  <h3 className="font-bold text-gray-800 dark:text-white">Processing Payment...</h3>
-                </div>
-              )}
-
-              {paymentStep === "success" && (
-                <div className="text-center py-6">
-                  <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">✓</div>
-                  <h3 className="text-xl font-bold text-gray-800 dark:text-white">Payment Successful!</h3>
-                  <p className="text-sm text-gray-500 mt-2">Redirecting...</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <button
+        onClick={handlePayment}
+        disabled={loading} // Disable button while loading to prevent double clicks
+        className={`w-full py-4 rounded-2xl font-bold text-white transition-all active:scale-95 ${
+          loading 
+            ? "bg-gray-400 cursor-not-allowed" 
+            : "bg-red-700 hover:bg-red-800 shadow-lg shadow-red-900/20"
+        }`}
+      >
+        {loading ? "Processing..." : "Pay Admission Fee"}
+      </button>
     </div>
   );
 };
