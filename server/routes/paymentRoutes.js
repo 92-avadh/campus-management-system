@@ -1,40 +1,28 @@
-const express = require("express");
-const router = express.Router();
-const User = require("../models/User");
+const express = require("express"); //
+const router = express.Router(); //
+const User = require("../models/User"); //
 
-// --- MOCK PAYMENT ROUTE ---
-router.post("/pay-mock", async (req, res) => {
+// --- MOCK PAYMENT VERIFICATION ---
+router.post("/mock-verify", async (req, res) => {
   try {
-    const { userId, amount, paymentMode } = req.body; // userId is "2025001"
+    const { studentId } = req.body;
 
-    // Generate a fake Transaction ID
-    const fakeTxnId = "TXN_" + Date.now();
-
-    // 👇 FIXED HERE: Use findOneAndUpdate to search by "userId" field
-    const updatedUser = await User.findOneAndUpdate(
-      { userId: userId }, // Search condition
-      { 
-        isFeePaid: true,
-        paymentId: fakeTxnId,
-        paymentMode: paymentMode 
-      },
-      { new: true } // Return the updated document
+    // Update the student's fee status in the database
+    const user = await User.findOneAndUpdate(
+      { userId: studentId },
+      { isFeePaid: true },
+      { new: true }
     );
 
-    if (!updatedUser) {
-      return res.status(404).json({ message: "User not found" });
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Student not found" });
     }
 
-    res.json({ 
-      success: true, 
-      message: "Payment Verified", 
-      transactionId: fakeTxnId 
-    });
-
-  } catch (error) {
-    console.error("Payment Error:", error);
-    res.status(500).json({ message: "Server Error" });
+    res.json({ success: true, message: "Demo Payment Successful!" });
+  } catch (err) {
+    console.error("Payment Error:", err);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 });
 
-module.exports = router;
+module.exports = router; 

@@ -1,11 +1,11 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import ScrollToTop from "./components/ScrollToTop"; // <--- ADD THIS IMPORT
+import ScrollToTop from "./components/ScrollToTop";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard"; 
+import ManageUsers from "./pages/ManageUsers"; // <--- ADD THIS IMPORT
 
 function App() {
-  // Simple check for login
   const PrivateRoute = ({ children }) => {
     const user = JSON.parse(localStorage.getItem("adminUser"));
     return user ? children : <Navigate to="/" />;
@@ -13,8 +13,7 @@ function App() {
 
   return (
     <Router>
-      <ScrollToTop /> {/* <--- ADD THIS HERE */}
-      
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<Login />} />
         <Route 
@@ -22,6 +21,15 @@ function App() {
           element={
             <PrivateRoute>
               <Dashboard />
+            </PrivateRoute>
+          } 
+        />
+        {/* ADD THE MANAGE USERS ROUTE HERE */}
+        <Route 
+          path="/manage-users" 
+          element={
+            <PrivateRoute>
+              <ManageUsers />
             </PrivateRoute>
           } 
         />

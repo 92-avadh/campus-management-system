@@ -8,7 +8,7 @@ const StudentDashboard = () => {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
   
-  // New State for Subjects
+  // State for Subjects
   const [subjects, setSubjects] = useState([]);
 
   // 1. Check Login & Fetch Subjects
@@ -33,137 +33,157 @@ const StudentDashboard = () => {
   }, [navigate]);
 
   const handleLogout = () => {
-    localStorage.removeItem("currentUser");
+    sessionStorage.removeItem("currentUser");
     navigate("/login");
   };
 
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans flex transition-colors duration-300">
-      
-      {/* SIDEBAR */}
-      <aside className="w-64 bg-red-900 dark:bg-black text-white flex flex-col shadow-2xl sticky top-0 h-screen z-20 transition-colors">
-        <div className="p-6 border-b border-red-800 dark:border-gray-800">
-          <h2 className="text-2xl font-bold tracking-wider">STUDENT<br/><span className="text-red-300 text-lg">PANEL</span></h2>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+      {/* Navbar */}
+      <nav className="bg-red-900 text-white p-4 flex justify-between items-center shadow-lg sticky top-0 z-50">
+        <div className="flex items-center gap-3">
+          <img src="/logo3.png" alt="Logo" className="h-10 w-10" />
+          <h1 className="text-xl font-bold tracking-tight">Student Portal</h1>
         </div>
-        <nav className="flex-1 p-4 space-y-2">
-          {["dashboard", "subjects", "attendance", "fees"].map((tab) => (
-            <button 
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center capitalize
-                ${activeTab === tab ? "bg-white text-red-900 font-bold" : "hover:bg-red-800 dark:hover:bg-gray-800 text-red-100"}`}
-            >
-              {tab === "fees" ? "💳 Fee Payment" : 
-               tab === "subjects" ? "📚 My Subjects" : 
-               tab === "attendance" ? "📅 Attendance" : "📊 Dashboard"}
-            </button>
-          ))}
-        </nav>
-        <div className="p-6 border-t border-red-800 dark:border-gray-800">
-          <button onClick={handleLogout} className="w-full bg-red-800 hover:bg-red-700 dark:bg-gray-800 dark:hover:bg-gray-700 py-3 rounded text-sm font-bold shadow-inner transition">LOGOUT</button>
+        <div className="flex items-center gap-4">
+          <ThemeToggle />
+          <button 
+            onClick={handleLogout} 
+            className="bg-red-700 hover:bg-red-800 px-4 py-2 rounded-xl font-bold transition-all active:scale-95"
+          >
+            Logout
+          </button>
         </div>
-      </aside>
+      </nav>
 
-      {/* MAIN CONTENT */}
-      <div className="flex-1 flex flex-col h-screen overflow-y-auto bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white transition-colors">
-        
-        {/* HEADER */}
-        <header className="bg-white dark:bg-gray-800 shadow-sm p-4 flex justify-between items-center sticky top-0 z-10 transition-colors border-b dark:border-gray-700">
-          <div>
-            <h1 className="text-xl font-bold text-gray-800 dark:text-white">Welcome, {user.name}</h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400 font-mono mt-1">{user.course} | {user.userId}</p>
-          </div>
-          <div className="flex items-center gap-6">
-             <ThemeToggle />
-             <div className="flex items-center gap-3 border-l pl-6 dark:border-gray-600">
-               <span className="text-right text-xs font-bold text-red-900 dark:text-red-400 hidden md:block">SDJ INTERNATIONAL<br/>COLLEGE</span>
-               <img src="/logo.png" alt="Logo" className="h-12 w-auto bg-white rounded shadow-sm border p-1" />
+      <div className="flex">
+        {/* Sidebar */}
+        <aside className="w-72 min-h-screen bg-white dark:bg-gray-800 shadow-xl p-6 hidden md:block">
+          <div className="flex flex-col items-center mb-10 pb-6 border-b dark:border-gray-700">
+            <div className="w-20 h-20 bg-red-100 text-red-700 rounded-3xl flex items-center justify-center text-3xl font-black mb-3">
+              {user.name.charAt(0)}
             </div>
+            <h2 className="font-bold text-gray-800 dark:text-white text-center">{user.name}</h2>
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">{user.course}</p>
           </div>
-        </header>
 
-        <div className="p-8">
+          <nav className="space-y-3">
+            {[
+              { id: "dashboard", label: "Dashboard", icon: "🏠" },
+              { id: "fees", label: "Fee Payment", icon: "💳" },
+              { id: "courses", label: "My Courses", icon: "📚" },
+              { id: "attendance", label: "Attendance", icon: "📅" }
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`w-full text-left p-4 rounded-2xl font-bold transition-all flex items-center gap-3 ${
+                  activeTab === item.id 
+                    ? "bg-red-50 text-red-700 shadow-sm" 
+                    : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                }`}
+              >
+                <span>{item.icon}</span> {item.label}
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        {/* Main Area */}
+        <main className="flex-1 p-6 md:p-12">
           
-          {/* 1. DASHBOARD VIEW */}
+          {/* 1. DASHBOARD TAB */}
           {activeTab === "dashboard" && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="md:col-span-1 space-y-6">
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 text-center transition-colors">
-                  <div className="w-24 h-24 bg-red-50 dark:bg-gray-700 rounded-full flex items-center justify-center text-4xl mx-auto mb-4 border-4 border-white dark:border-gray-600 shadow-sm">🎓</div>
-                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">{user.name}</h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{user.course} Student</p>
-                  <div className="text-left bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl text-sm">
-                     <p className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">ID:</span> <span className="font-bold">{user.userId}</span></p>
-                     <p className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Fee Status:</span> <span className={user.isFeePaid ? "text-green-500 font-bold" : "text-red-500 font-bold"}>{user.isFeePaid ? "PAID" : "PENDING"}</span></p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="md:col-span-2 space-y-6">
-                 {/* IF FEE IS PAID -> SHOW SUBJECTS WIDGET */}
-                 {user.isFeePaid ? (
-                   <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border-l-4 border-green-500 transition-colors">
-                      <h3 className="font-bold text-xl mb-4 flex items-center text-gray-800 dark:text-white">
-                        <span className="bg-green-100 text-green-600 p-2 rounded-lg mr-3">📚</span>
-                        Your {user.course} Subjects
-                      </h3>
-                      <div className="grid grid-cols-2 gap-4">
-                        {subjects.map((sub, idx) => (
-                          <div key={idx} className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg font-medium text-gray-700 dark:text-gray-200 border border-gray-100 dark:border-gray-600">
-                            📖 {sub}
-                          </div>
-                        ))}
-                      </div>
-                   </div>
-                 ) : (
-                   <div className="bg-red-50 dark:bg-red-900/20 p-6 rounded-2xl border border-red-200 dark:border-red-800 text-center">
-                      <h3 className="text-red-700 dark:text-red-400 font-bold text-lg">⚠️ Subjects Locked</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">Please pay your admission fees to view your course subjects and start your classes.</p>
-                   </div>
-                 )}
-
-                 <FeePayment user={user} />
+            <div className="animate-in fade-in duration-500">
+              <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-8 tracking-tight">Overview</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                 <div className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] shadow-xl border dark:border-gray-700">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Current Enrollment</p>
+                    <h3 className="text-2xl font-black text-red-700">{user.course}</h3>
+                    <p className="text-sm text-gray-500 mt-4">University ID: <span className="font-mono font-bold text-gray-900 dark:text-white">{user.userId}</span></p>
+                 </div>
+                 <div className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] shadow-xl border dark:border-gray-700">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Financial Status</p>
+                    <div className="flex items-center gap-3 mt-1">
+                       <div className={`w-3 h-3 rounded-full ${user.isFeePaid ? 'bg-emerald-500' : 'bg-red-500 animate-pulse'}`}></div>
+                       <h3 className={`text-2xl font-black ${user.isFeePaid ? 'text-emerald-600' : 'text-red-700'}`}>
+                          {user.isFeePaid ? "Fees Fully Paid" : "Payment Pending"}
+                       </h3>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-4">Last verified: {new Date().toLocaleDateString()}</p>
+                 </div>
               </div>
             </div>
           )}
 
-          {/* 2. SUBJECTS TAB (Detailed View) */}
-          {activeTab === "subjects" && (
-            <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg transition-colors">
+          {/* 2. FEES TAB */}
+          {activeTab === "fees" && (
+            <div className="max-w-2xl mx-auto animate-in zoom-in-95 duration-300">
+              {user.isFeePaid ? (
+                <div className="bg-white dark:bg-gray-800 p-12 rounded-[3rem] shadow-2xl text-center border-t-[12px] border-emerald-500">
+                   <div className="text-7xl mb-6">✅</div>
+                   <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter">Everything is Clear!</h2>
+                   <p className="text-gray-500 dark:text-gray-400 mt-3 font-medium">Your academic fees for the current session have been successfully processed.</p>
+                </div>
+              ) : (
+                /* Pass explicit props to ensure amount is visible */
+                <FeePayment 
+                  studentId={user.userId} 
+                  amount={5000} 
+                  onPageRefresh={() => {
+                    // Update UI immediately after successful mock payment
+                    const updatedUser = { ...user, isFeePaid: true };
+                    setUser(updatedUser);
+                    sessionStorage.setItem("currentUser", JSON.stringify(updatedUser));
+                  }} 
+                />
+              )}
+            </div>
+          )}
+
+          {/* 3. COURSES TAB */}
+          {activeTab === "courses" && (
+            <div className="bg-white dark:bg-gray-800 p-10 rounded-[2.5rem] shadow-2xl border dark:border-gray-700">
                {user.isFeePaid ? (
                  <>
-                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">📚 Course Curriculum: {user.course}</h2>
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                   <div className="flex justify-between items-center mb-10">
+                      <h2 className="text-3xl font-black dark:text-white tracking-tighter">Course Subjects</h2>
+                      <span className="bg-red-100 text-red-700 text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest">{user.course}</span>
+                   </div>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {subjects.map((sub, idx) => (
-                        <div key={idx} className="flex items-center p-5 bg-gray-50 dark:bg-gray-700/50 rounded-xl border hover:border-red-300 dark:hover:border-red-500 transition shadow-sm">
-                          <div className="w-12 h-12 bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300 rounded-full flex items-center justify-center font-bold text-xl mr-4">
+                        <div key={idx} className="p-5 bg-gray-50 dark:bg-gray-700/50 rounded-2xl flex items-center border border-transparent hover:border-red-200 transition-all group">
+                          <div className="w-12 h-12 bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300 rounded-full flex items-center justify-center font-bold text-xl mr-4 group-hover:scale-110 transition-transform">
                             {idx + 1}
                           </div>
                           <div>
                             <h4 className="font-bold text-lg text-gray-800 dark:text-white">{sub}</h4>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">Core Subject</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold tracking-tighter">Core Subject</p>
                           </div>
                         </div>
                       ))}
                    </div>
                  </>
                ) : (
-                 <div className="text-center py-20">
-                    <div className="text-6xl mb-4">🔒</div>
-                    <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Content Locked</h2>
-                    <p className="text-gray-500 dark:text-gray-400 mt-2">Complete your fee payment to access course materials.</p>
+                 <div className="text-center py-20 bg-gray-50 dark:bg-gray-900/50 rounded-[2rem] border-2 border-dashed border-gray-200 dark:border-gray-700">
+                    <div className="text-6xl mb-6">🔒</div>
+                    <h2 className="text-2xl font-black text-gray-800 dark:text-white tracking-tight">Access Restricted</h2>
+                    <p className="text-gray-500 dark:text-gray-400 mt-2 max-w-xs mx-auto">Please complete your fee payment to unlock your academic subjects and materials.</p>
                  </div>
                )}
             </div>
           )}
           
-          {/* Other Tabs */}
-          {activeTab === "attendance" && <div className="p-10 bg-white dark:bg-gray-800 rounded-2xl shadow text-center dark:text-white">Attendance Module Coming Soon</div>}
-          {activeTab === "fees" && <div className="max-w-2xl mx-auto"><FeePayment user={user} /></div>}
+          {/* 4. ATTENDANCE TAB */}
+          {activeTab === "attendance" && (
+             <div className="p-20 bg-gray-50 dark:bg-gray-800/50 rounded-[3rem] border-2 border-dashed border-gray-200 dark:border-gray-700 text-center">
+                <p className="text-gray-400 font-bold uppercase tracking-widest text-sm">Attendance Module Coming Soon</p>
+             </div>
+          )}
 
-        </div>
+        </main>
       </div>
     </div>
   );
