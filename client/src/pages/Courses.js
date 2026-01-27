@@ -14,7 +14,13 @@ const courses = [
     details: {
       eligibility: "10+2 from a recognized board with min 50% marks.",
       fees: "₹45,000 per semester",
-      syllabus: ["C Programming", "Data Structures", "Web Development", "DBMS", "Java & Python"],
+      syllabus: [
+        "C Programming", 
+        "Web Development", 
+        "Database Management Systems (DBMS)", 
+        "Data Structures & Algorithms", 
+        "Operating Systems"
+      ],
       careers: ["Software Developer", "Web Designer", "System Analyst", "Network Administrator"]
     }
   },
@@ -27,341 +33,193 @@ const courses = [
     image: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=2032",
     description: "Develop leadership skills and business acumen to thrive in the corporate world.",
     details: {
-      eligibility: "10+2 in any stream with English as a subject.",
-      fees: "₹40,000 per semester",
-      syllabus: ["Principles of Management", "Marketing", "Financial Accounting", "HR Management", "Business Law"],
-      careers: ["HR Executive", "Marketing Manager", "Business Consultant", "Sales Executive"]
+      eligibility: "10+2 in any stream with min 45% marks.",
+      fees: "₹55,000 per semester",
+      syllabus: [
+        "Principles of Management", 
+        "Marketing Management", 
+        "Organizational Behavior", 
+        "Business Communication", 
+        "Human Resource Management"
+      ],
+      careers: ["HR Manager", "Marketing Executive", "Business Consultant", "Sales Manager"]
     }
   },
   {
     id: 3,
-    title: "B.Tech in Computer Science",
-    category: "Engineering",
-    duration: "4 Years",
-    level: "Undergraduate",
-    image: "https://images.unsplash.com/photo-1531482615713-2afd69097998?q=80&w=2070",
-    description: "A comprehensive engineering program focusing on AI, Machine Learning, and Software Engineering.",
-    details: {
-      eligibility: "10+2 with Physics, Chemistry, and Math (PCM).",
-      fees: "₹85,000 per semester",
-      syllabus: ["Engineering Math", "Digital Logic", "OS", "Artificial Intelligence", "Compiler Design"],
-      careers: ["Software Engineer", "Data Scientist", "AI Specialist", "Cloud Architect"]
-    }
-  },
-  {
-    id: 4,
     title: "Bachelor of Commerce (B.Com)",
-    category: "Commerce",
+    category: "Finance",
     duration: "3 Years",
     level: "Undergraduate",
-    image: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=2070",
-    description: "Gain expertise in accounting, finance, taxation, and economics.",
+    image: "https://images.unsplash.com/photo-1454165833767-027ffea9e778?q=80&w=2070",
+    description: "Build a strong foundation in accounting, taxation, and financial management.",
     details: {
-      eligibility: "10+2 with Commerce stream.",
-      fees: "₹25,000 per semester",
-      syllabus: ["Financial Accounting", "Microeconomics", "Business Statistics", "Taxation Law", "Auditing"],
-      careers: ["Accountant", "Tax Consultant", "Financial Analyst", "Banker"]
-    }
-  },
-  {
-    id: 5,
-    title: "M.Sc in Information Technology",
-    category: "Technology",
-    duration: "2 Years",
-    level: "Postgraduate",
-    image: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=2070",
-    description: "Advanced studies in IT infrastructure, cloud computing, and enterprise software.",
-    details: {
-      eligibility: "BCA / B.Sc (IT/CS) graduates.",
-      fees: "₹55,000 per semester",
-      syllabus: ["Advanced Java", "Cloud Computing", "Cyber Security", "Mobile App Development", "Big Data"],
-      careers: ["IT Project Manager", "Cyber Security Analyst", "Cloud Engineer", "Senior Developer"]
-    }
-  },
-  {
-    id: 6,
-    title: "Master of Business Administration (MBA)",
-    category: "Management",
-    duration: "2 Years",
-    level: "Postgraduate",
-    image: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=2070",
-    description: "Specializations available in Marketing, Finance, HR, and International Business.",
-    details: {
-      eligibility: "Any Graduate with valid entrance score (CAT/CMAT).",
-      fees: "₹1,20,000 per semester",
-      syllabus: ["Strategic Management", "Corporate Finance", "Consumer Behavior", "Operations Research", "Leadership"],
-      careers: ["Investment Banker", "Marketing Director", "Operations Manager", "Entrepreneur"]
-    }
-  },
-  {
-    id: 7,
-    title: "B.Sc in Data Science",
-    category: "Science",
-    duration: "3 Years",
-    level: "Undergraduate",
-    image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070",
-    description: "Learn to analyze complex data sets and derive actionable insights for businesses.",
-    details: {
-      eligibility: "10+2 with Mathematics/Statistics.",
-      fees: "₹60,000 per semester",
-      syllabus: ["Probability & Statistics", "Python for Data Science", "Machine Learning", "Data Visualization", "SQL"],
-      careers: ["Data Analyst", "Business Intelligence Developer", "Data Engineer", "Statistician"]
-    }
-  },
-  {
-    id: 8,
-    title: "B.Des in Fashion Design",
-    category: "Arts & Design",
-    duration: "4 Years",
-    level: "Undergraduate",
-    image: "https://images.unsplash.com/photo-1537832816519-689ad163238b?q=80&w=2059",
-    description: "Explore creativity and style with our comprehensive fashion design curriculum.",
-    details: {
-      eligibility: "10+2 in any stream with creative aptitude.",
-      fees: "₹75,000 per semester",
-      syllabus: ["Textile Science", "Pattern Making", "Garment Construction", "Fashion Illustration", "Merchandising"],
-      careers: ["Fashion Designer", "Stylist", "Textile Designer", "Fashion Merchandiser"]
-    }
-  },
-  {
-    id: 9,
-    title: "B.Tech in Artificial Intelligence",
-    category: "Engineering",
-    duration: "4 Years",
-    level: "Undergraduate",
-    image: "https://images.unsplash.com/photo-1555255707-c07966088b7b?q=80&w=2032",
-    description: "Specialized engineering track focused on Neural Networks, Robotics, and Deep Learning.",
-    details: {
-      eligibility: "10+2 with PCM (Min 60%).",
-      fees: "₹95,000 per semester",
-      syllabus: ["Neural Networks", "NLP", "Robotics", "Computer Vision", "Deep Learning"],
-      careers: ["AI Engineer", "Robotics Scientist", "NLP Engineer", "Machine Learning Engineer"]
+      eligibility: "10+2 with Commerce or Math background.",
+      fees: "₹35,000 per semester",
+      syllabus: [
+        "Financial Accounting", 
+        "Business Laws", 
+        "Corporate Finance", 
+        "Economics for Business", 
+        "Auditing and Taxation"
+      ],
+      careers: ["Accountant", "Tax Consultant", "Banker", "Financial Analyst"]
     }
   }
 ];
 
 const Courses = () => {
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCourse, setSelectedCourse] = useState(null); // For Details Modal
-  
-  // NEW: State for Apply Modal
+  const [selectedCourse, setSelectedCourse] = useState(null);
   const [isApplyOpen, setIsApplyOpen] = useState(false);
   const [applyCourseName, setApplyCourseName] = useState("");
 
-  const categories = ["All", "Technology", "Management", "Engineering", "Commerce", "Science", "Arts & Design"];
-
-  // Filter Logic
-  const filteredCourses = courses.filter(course => {
-    const matchesCategory = selectedCategory === "All" || course.category === selectedCategory;
-    const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
-
-  // Handler to open Apply Modal from Course Details
   const handleApplyClick = (courseTitle) => {
     setApplyCourseName(courseTitle);
     setIsApplyOpen(true);
-    // Optional: Close the details modal when opening apply modal? 
-    // Uncomment next line if you want that behavior:
-    // setSelectedCourse(null); 
+    setSelectedCourse(null); // Close details modal if open
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
+    <div className="min-h-screen bg-white dark:bg-gray-950 transition-colors duration-300">
       
-      {/* ================= HEADER ================= */}
-      <div className="bg-red-900 text-white py-20">
-        <div className="container mx-auto px-6 text-center">
-          <h1 className="text-4xl md:text-5xl font-extrabold mb-4">Our Academic Programs</h1>
-          <p className="text-red-200 text-lg max-w-2xl mx-auto">
-            Discover a wide range of courses designed to equip you with the skills needed for the future.
+      {/* Hero Section */}
+      <section className="relative py-20 bg-gray-900 text-white overflow-hidden">
+        <div className="absolute inset-0 opacity-20">
+          <img 
+            src="https://images.unsplash.com/photo-1523050335192-ce125a431290?q=80&w=2070" 
+            alt="Campus" 
+            className="w-full h-full object-cover"
+          />
+        </div>
+        <div className="relative max-w-7xl mx-auto px-6 text-center">
+          <h1 className="text-5xl md:text-6xl font-black mb-6 tracking-tighter">
+            Academic <span className="text-red-600">Programs</span>
+          </h1>
+          <p className="text-gray-400 max-w-2xl mx-auto text-lg">
+            Explore our diverse range of undergraduate programs designed to 
+            empower your future and build professional excellence.
           </p>
         </div>
-      </div>
+      </section>
 
-      {/* ================= SEARCH & FILTER ================= */}
-      <div className="container mx-auto px-6 py-12">
-        {/* Search Bar */}
-        <div className="max-w-xl mx-auto mb-10 relative">
-          <input 
-            type="text"
-            placeholder="Search for a course..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-6 py-4 rounded-full border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-700 pl-12"
-          />
-          <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-xl">🔍</span>
-        </div>
-
-        {/* Category Buttons */}
-        <div className="flex flex-wrap justify-center gap-4 mb-12">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-6 py-2 rounded-full font-bold text-sm transition-all shadow-sm ${
-                selectedCategory === cat
-                  ? "bg-red-700 text-white shadow-md transform scale-105"
-                  : "bg-white text-gray-600 hover:bg-red-50 hover:text-red-700 border border-gray-200"
-              }`}
+      {/* Course Listing */}
+      <section className="py-20 max-w-7xl mx-auto px-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+          {courses.map((course) => (
+            <div 
+              key={course.id} 
+              className="group bg-white dark:bg-gray-900 rounded-[2rem] overflow-hidden border border-gray-100 dark:border-gray-800 hover:shadow-2xl transition-all duration-500"
             >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        {/* ================= COURSE GRID ================= */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {filteredCourses.map((course) => (
-            <div key={course.id} className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-shadow duration-300 group flex flex-col h-full">
-              
-              <div className="h-48 overflow-hidden relative">
+              <div className="relative h-64 overflow-hidden">
                 <img 
                   src={course.image} 
                   alt={course.title} 
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                 />
-                <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-red-800 uppercase tracking-wide shadow-sm">
-                  {course.level}
-                </div>
-              </div>
-
-              <div className="p-6 flex-grow flex flex-col">
-                <div className="text-xs font-bold text-red-600 mb-2 uppercase tracking-wider">
+                <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-4 py-1 rounded-full text-xs font-bold text-gray-900 uppercase tracking-widest">
                   {course.category}
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3 leading-tight group-hover:text-red-700 transition-colors">
+              </div>
+              
+              <div className="p-8">
+                <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-3 leading-tight">
                   {course.title}
                 </h3>
-                <p className="text-gray-600 text-sm mb-6 line-clamp-3 flex-grow">
+                <p className="text-gray-500 dark:text-gray-400 text-sm mb-6 line-clamp-2">
                   {course.description}
                 </p>
                 
-                <div className="border-t border-gray-100 pt-4 flex items-center justify-between mt-auto">
-                  <span className="text-sm font-semibold text-gray-500 flex items-center">
-                    <span className="mr-2">⏳</span> {course.duration}
-                  </span>
+                <div className="flex items-center gap-4 mb-8">
+                   <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Duration</span>
+                      <span className="text-sm font-bold dark:text-gray-200">{course.duration}</span>
+                   </div>
+                   <div className="w-[1px] h-8 bg-gray-100 dark:bg-gray-800"></div>
+                   <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Level</span>
+                      <span className="text-sm font-bold dark:text-gray-200">{course.level}</span>
+                   </div>
+                </div>
+
+                <div className="flex gap-3">
                   <button 
                     onClick={() => setSelectedCourse(course)}
-                    className="text-red-700 font-bold text-sm hover:underline"
+                    className="flex-1 bg-gray-900 dark:bg-white dark:text-gray-900 text-white py-3 rounded-xl font-bold hover:bg-gray-800 transition-colors"
                   >
-                    View Details →
+                    View Details
+                  </button>
+                  <button 
+                    onClick={() => handleApplyClick(course.title)}
+                    className="px-6 bg-red-700 text-white py-3 rounded-xl font-bold hover:bg-red-800 transition-colors"
+                  >
+                    Apply
                   </button>
                 </div>
               </div>
-
             </div>
           ))}
         </div>
+      </section>
 
-        {/* Empty State */}
-        {filteredCourses.length === 0 && (
-          <div className="text-center py-20 text-gray-500">
-            <p className="text-xl">No courses found matching "{searchTerm}".</p>
-            <button onClick={() => {setSearchTerm(""); setSelectedCategory("All");}} className="mt-4 text-red-700 font-bold hover:underline">
-              Clear Filters
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* ================= COURSE DETAIL MODAL ================= */}
+      {/* ================= DETAILS MODAL ================= */}
       {selectedCourse && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl relative">
-            
-            {/* Close Button */}
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
+          <div className="bg-white dark:bg-gray-900 w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-[3rem] shadow-2xl relative">
             <button 
               onClick={() => setSelectedCourse(null)}
-              className="absolute top-4 right-4 bg-gray-100 p-2 rounded-full hover:bg-red-100 hover:text-red-700 transition-colors z-10"
+              className="absolute top-6 right-6 w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center text-2xl hover:bg-red-100 hover:text-red-600 transition-colors"
             >
-              ✕
+              ×
             </button>
 
-            {/* Modal Header Image */}
-            <div className="relative h-64">
-              <img 
-                src={selectedCourse.image} 
-                alt={selectedCourse.title} 
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-8">
-                <div>
-                  <span className="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2 inline-block">
-                    {selectedCourse.category}
-                  </span>
-                  <h2 className="text-3xl md:text-4xl font-bold text-white">{selectedCourse.title}</h2>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2">
+              <div className="h-full">
+                <img src={selectedCourse.image} alt="" className="w-full h-full object-cover" />
               </div>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
               
-              {/* Left Column: Details */}
-              <div className="md:col-span-2 space-y-8">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3 flex items-center">
-                    <span className="bg-red-100 text-red-700 p-2 rounded-lg mr-3">📖</span> Course Overview
-                  </h3>
-                  <p className="text-gray-600 leading-relaxed">
-                    {selectedCourse.description} This course is designed to provide students with theoretical knowledge and practical skills necessary for a successful career in {selectedCourse.category}.
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3 flex items-center">
-                    <span className="bg-red-100 text-red-700 p-2 rounded-lg mr-3">📝</span> Key Syllabus Topics
-                  </h3>
-                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {selectedCourse.details.syllabus.map((topic, index) => (
-                      <li key={index} className="flex items-center text-gray-700 text-sm bg-gray-50 p-3 rounded-lg border border-gray-100">
-                        <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
-                        {topic}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3 flex items-center">
-                    <span className="bg-red-100 text-red-700 p-2 rounded-lg mr-3">🚀</span> Career Prospects
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedCourse.details.careers.map((job, index) => (
-                      <span key={index} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
-                        {job}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column: Info Box */}
-              <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 h-fit">
-                <h4 className="text-lg font-bold text-gray-900 mb-6 border-b border-gray-200 pb-2">Program Details</h4>
+              <div className="p-10 md:p-12">
+                <span className="text-red-600 font-bold uppercase tracking-widest text-xs mb-2 block">Course Overview</span>
+                <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-6 leading-tight">{selectedCourse.title}</h2>
                 
-                <div className="space-y-6">
+                <div className="space-y-6 mb-8">
                   <div>
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Duration</span>
-                    <p className="font-semibold text-gray-900">{selectedCourse.duration}</p>
+                    <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase mb-3">Key Subjects (Syllabus)</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedCourse.details.syllabus.map((item, i) => (
+                        <span key={i} className="bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-lg text-xs font-medium dark:text-gray-300">
+                          {item}
+                        </span>
+                      ))}
+                    </div>
                   </div>
+
                   <div>
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Level</span>
-                    <p className="font-semibold text-gray-900">{selectedCourse.level}</p>
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Eligibility</span>
-                    <p className="font-semibold text-gray-900 text-sm">{selectedCourse.details.eligibility}</p>
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Fees</span>
-                    <p className="font-bold text-red-700 text-xl">{selectedCourse.details.fees}</p>
+                    <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase mb-3">Career Opportunities</h4>
+                    <ul className="grid grid-cols-2 gap-2">
+                      {selectedCourse.details.careers.map((career, i) => (
+                        <li key={i} className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 bg-red-600 rounded-full"></span> {career}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
 
-                {/* Apply Button Inside Details Modal */}
+                <div className="grid grid-cols-3 gap-4 p-6 bg-gray-50 dark:bg-gray-800/50 rounded-2xl">
+                  <div>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Level</span>
+                    <p className="font-semibold text-gray-900 dark:text-gray-100">{selectedCourse.level}</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Eligibility</span>
+                    <p className="font-semibold text-gray-900 dark:text-gray-100 text-[10px]">{selectedCourse.details.eligibility}</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Fees</span>
+                    <p className="font-bold text-red-700 text-sm">{selectedCourse.details.fees}</p>
+                  </div>
+                </div>
+
                 <button 
                   onClick={() => handleApplyClick(selectedCourse.title)}
                   className="w-full mt-8 bg-red-700 text-white py-3 rounded-xl font-bold hover:bg-red-800 transition-colors shadow-lg"

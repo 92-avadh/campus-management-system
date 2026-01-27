@@ -54,10 +54,17 @@ router.post("/approve/:id", async (req, res) => {
     const rawPassword = Math.random().toString(36).slice(-8);
     const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
+    // FIXED: Added 'department' to ensure visibility in Faculty Dashboard
     const newUser = new User({
-      name: app.name, email: app.email, phone: app.phone,
-      role: "student", userId: newId, password: hashedPassword,
-      course: app.course, photo: app.photo
+      name: app.name, 
+      email: app.email, 
+      phone: app.phone,
+      role: "student", 
+      userId: newId, 
+      password: hashedPassword,
+      course: app.course, 
+      department: app.course, // Mapping course to department for filtering
+      photo: app.photo
     });
 
     await newUser.save();

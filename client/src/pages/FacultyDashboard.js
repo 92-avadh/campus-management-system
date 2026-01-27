@@ -16,6 +16,7 @@ const FacultyDashboard = () => {
     } else {
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
+      // Fetch students using the faculty's specific department
       fetchStudents(parsedUser.department);
     }
   }, [navigate]);
@@ -23,7 +24,8 @@ const FacultyDashboard = () => {
   // --- 2. FETCH STUDENTS ---
   const fetchStudents = async (dept) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/faculty/students?department=${dept}`);
+      // Passes the department as a query parameter to the filtered backend route
+      const response = await fetch(`http://localhost:5000/api/faculty/students?department=${encodeURIComponent(dept)}`);
       const data = await response.json();
       setStudents(data);
     } catch (error) {
@@ -32,7 +34,7 @@ const FacultyDashboard = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("currentUser");
+    sessionStorage.removeItem("currentUser");
     navigate("/login");
   };
 
@@ -112,7 +114,7 @@ const FacultyDashboard = () => {
               {/* Stats Row */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div className="bg-blue-600 text-white p-6 rounded-2xl shadow-lg shadow-blue-500/30">
-                  <h3 className="text-lg font-semibold opacity-80">Total Students</h3>
+                  <h3 className="text-lg font-semibold opacity-80">Enrolled Students (Paid)</h3>
                   <p className="text-4xl font-bold">{students.length}</p>
                 </div>
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
@@ -125,10 +127,10 @@ const FacultyDashboard = () => {
                 </div>
               </div>
 
-              {/* Recent Students Table */}
+              {/* Paid Students Table */}
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
                 <div className="p-6 border-b border-gray-100 dark:border-gray-700">
-                  <h2 className="text-xl font-bold text-gray-800 dark:text-white">My Students</h2>
+                  <h2 className="text-xl font-bold text-gray-800 dark:text-white">My Students ({user.department})</h2>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
@@ -141,14 +143,24 @@ const FacultyDashboard = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                      {students.map((student) => (
-                        <tr key={student._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                          <td className="p-4 font-bold text-gray-700 dark:text-gray-200">{student.userId}</td>
-                          <td className="p-4 font-semibold text-gray-800 dark:text-gray-200">{student.name}</td>
-                          <td className="p-4"><span className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded text-xs font-bold">{student.course}</span></td>
-                          <td className="p-4">{student.isFeePaid ? "✅ Paid" : "❌ Pending"}</td>
+                      {students.length > 0 ? (
+                        students.map((student) => (
+                          <tr key={student._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                            <td className="p-4 font-bold text-gray-700 dark:text-gray-200">{student.userId}</td>
+                            <td className="p-4 font-semibold text-gray-800 dark:text-gray-200">{student.name}</td>
+                            <td className="p-4"><span className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded text-xs font-bold">{student.course}</span></td>
+                            <td className="p-4">
+                              <span className="text-emerald-600 font-bold">✅ Paid</span>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="4" className="p-8 text-center text-gray-500 dark:text-gray-400">
+                            No paid students found for the {user.department} department.
+                          </td>
                         </tr>
-                      ))}
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -165,7 +177,7 @@ const FacultyDashboard = () => {
               </div>
               
               {students.length === 0 ? (
-                <p className="text-gray-500">No students available for attendance.</p>
+                <p className="text-gray-500">No paid students available for attendance.</p>
               ) : (
                 <div className="space-y-3">
                   {students.map(student => (
@@ -191,7 +203,7 @@ const FacultyDashboard = () => {
             </div>
           )}
 
-          {/* 3. NOTICES VIEW (UPDATED DROPDOWN) */}
+          {/* 3. NOTICES VIEW */}
           {activeTab === "notices" && (
             <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
               <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-6">Create New Notice</h2>
@@ -204,8 +216,6 @@ const FacultyDashboard = () => {
                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Notice Content</label>
                   <textarea rows="4" placeholder="Enter full details here..." className="w-full p-3 rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
                 </div>
-                
-                {/* 👇 UPDATED DROPDOWN HERE 👇 */}
                 <div>
                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Target Audience</label>
                   <select className="w-full p-3 rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
@@ -230,18 +240,6 @@ const FacultyDashboard = () => {
                 <label htmlFor="fileUpload" className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition">
                   Browse Files
                 </label>
-              </div>
-              
-              <div className="mt-8 text-left">
-                <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Recently Uploaded</h3>
-                <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg flex justify-between items-center mb-2">
-                  <span className="font-bold text-gray-700 dark:text-gray-200">Unit-1-Introduction.pdf</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Uploaded Yesterday</span>
-                </div>
-                <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg flex justify-between items-center">
-                  <span className="font-bold text-gray-700 dark:text-gray-200">Assignment-2.pdf</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Uploaded 2 days ago</span>
-                </div>
               </div>
             </div>
           )}

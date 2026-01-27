@@ -7,8 +7,6 @@ const StudentDashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
-  
-  // State for Subjects
   const [subjects, setSubjects] = useState([]);
 
   // 1. Check Login & Fetch Subjects
@@ -21,11 +19,15 @@ const StudentDashboard = () => {
       setUser(userData);
 
       // ONLY Fetch subjects if Fee is Paid
-      if (userData.isFeePaid) {
-        fetch(`http://localhost:5000/api/courses/${userData.course}`)
+      if (userData.isFeePaid && userData.course) {
+        // Use encodeURIComponent to handle spaces and brackets in course names
+        const encodedCourse = encodeURIComponent(userData.course);
+        fetch(`http://localhost:5000/api/courses/${encodedCourse}`)
           .then(res => res.json())
           .then(data => {
-            if (data.subjects) setSubjects(data.subjects);
+            if (data.subjects) {
+              setSubjects(data.subjects);
+            }
           })
           .catch(err => console.error("Error loading subjects:", err));
       }
@@ -93,8 +95,6 @@ const StudentDashboard = () => {
 
         {/* Main Area */}
         <main className="flex-1 p-6 md:p-12">
-          
-          {/* 1. DASHBOARD TAB */}
           {activeTab === "dashboard" && (
             <div className="animate-in fade-in duration-500">
               <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-8 tracking-tight">Overview</h2>
@@ -118,7 +118,6 @@ const StudentDashboard = () => {
             </div>
           )}
 
-          {/* 2. FEES TAB */}
           {activeTab === "fees" && (
             <div className="max-w-2xl mx-auto animate-in zoom-in-95 duration-300">
               {user.isFeePaid ? (
@@ -128,22 +127,21 @@ const StudentDashboard = () => {
                    <p className="text-gray-500 dark:text-gray-400 mt-3 font-medium">Your academic fees for the current session have been successfully processed.</p>
                 </div>
               ) : (
-                /* Pass explicit props to ensure amount is visible */
                 <FeePayment 
                   studentId={user.userId} 
                   amount={5000} 
                   onPageRefresh={() => {
-                    // Update UI immediately after successful mock payment
                     const updatedUser = { ...user, isFeePaid: true };
                     setUser(updatedUser);
                     sessionStorage.setItem("currentUser", JSON.stringify(updatedUser));
+                    // Re-fetch subjects immediately after payment
+                    window.location.reload(); 
                   }} 
                 />
               )}
             </div>
           )}
 
-          {/* 3. COURSES TAB */}
           {activeTab === "courses" && (
             <div className="bg-white dark:bg-gray-800 p-10 rounded-[2.5rem] shadow-2xl border dark:border-gray-700">
                {user.isFeePaid ? (
@@ -152,19 +150,23 @@ const StudentDashboard = () => {
                       <h2 className="text-3xl font-black dark:text-white tracking-tighter">Course Subjects</h2>
                       <span className="bg-red-100 text-red-700 text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest">{user.course}</span>
                    </div>
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {subjects.map((sub, idx) => (
-                        <div key={idx} className="p-5 bg-gray-50 dark:bg-gray-700/50 rounded-2xl flex items-center border border-transparent hover:border-red-200 transition-all group">
-                          <div className="w-12 h-12 bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300 rounded-full flex items-center justify-center font-bold text-xl mr-4 group-hover:scale-110 transition-transform">
-                            {idx + 1}
+                   {subjects.length > 0 ? (
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {subjects.map((sub, idx) => (
+                          <div key={idx} className="p-5 bg-gray-50 dark:bg-gray-700/50 rounded-2xl flex items-center border border-transparent hover:border-red-200 transition-all group">
+                            <div className="w-12 h-12 bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300 rounded-full flex items-center justify-center font-bold text-xl mr-4 group-hover:scale-110 transition-transform">
+                              {idx + 1}
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-lg text-gray-800 dark:text-white">{sub}</h4>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold tracking-tighter">Core Subject</p>
+                            </div>
                           </div>
-                          <div>
-                            <h4 className="font-bold text-lg text-gray-800 dark:text-white">{sub}</h4>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold tracking-tighter">Core Subject</p>
-                          </div>
-                        </div>
-                      ))}
-                   </div>
+                        ))}
+                     </div>
+                   ) : (
+                     <p className="text-center text-gray-500">No subjects found for this course.</p>
+                   )}
                  </>
                ) : (
                  <div className="text-center py-20 bg-gray-50 dark:bg-gray-900/50 rounded-[2rem] border-2 border-dashed border-gray-200 dark:border-gray-700">
@@ -176,13 +178,11 @@ const StudentDashboard = () => {
             </div>
           )}
           
-          {/* 4. ATTENDANCE TAB */}
           {activeTab === "attendance" && (
              <div className="p-20 bg-gray-50 dark:bg-gray-800/50 rounded-[3rem] border-2 border-dashed border-gray-200 dark:border-gray-700 text-center">
                 <p className="text-gray-400 font-bold uppercase tracking-widest text-sm">Attendance Module Coming Soon</p>
              </div>
           )}
-
         </main>
       </div>
     </div>
