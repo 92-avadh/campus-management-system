@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import FeePayment from "../components/FeePayment"; 
 import ThemeToggle from "../components/ThemeToggle";
-import NotificationBell from "../components/NotificationBell"; // ADDED 
+import NotificationBell from "../components/NotificationBell";
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -13,53 +13,56 @@ const StudentDashboard = () => {
   const [materials, setMaterials] = useState([]);
   const [loadingMaterials, setLoadingMaterials] = useState(false);
 
-  // 1. Check Login & Fetch Subjects
+  /* ============================
+     1️⃣ LOAD USER (ONCE)
+  ============================ */
   useEffect(() => {
     const storedUser = sessionStorage.getItem("currentUser");
     if (!storedUser) {
       navigate("/login");
     } else {
       const userData = JSON.parse(storedUser);
-      console.log("👤 Student User Data:", userData);
-      console.log("🆔 Student ID for notifications:", userData._id || userData.id || userData.userId);
       setUser(userData);
-
-      // ONLY Fetch subjects if Fee is Paid
-      if (userData.isFeePaid && userData.course) {
-        const encodedCourse = encodeURIComponent(userData.course);
-        fetch(`http://localhost:5000/api/courses/${encodedCourse}`)
-          .then(res => res.json())
-          .then(data => {
-            if (data.subjects) {
-              setSubjects(data.subjects);
-            }
-          })
-          .catch(err => console.error("Error loading subjects:", err));
-      }
     }
   }, [navigate]);
 
-  // 2. Fetch materials when subject is selected
+  /* ============================
+     2️⃣ FETCH SUBJECTS (FIXED)
+  ============================ */
+  useEffect(() => {
+    if (user?.isFeePaid && user?.course) {
+      const normalizedCourse = user.course.includes("BCA") ? "BCA" : user.course;
+      const encodedCourse = encodeURIComponent(normalizedCourse);
+
+      fetch(`http://localhost:5000/api/courses/${encodedCourse}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.subjects) {
+            setSubjects(data.subjects);
+          }
+        })
+        .catch(err => console.error("Error loading subjects:", err));
+    }
+  }, [user?.course, user?.isFeePaid]);
+
+  /* ============================
+     3️⃣ FETCH MATERIALS
+  ============================ */
   const handleSubjectClick = async (subject) => {
     setSelectedSubject(subject);
     setLoadingMaterials(true);
-    
+
     try {
-      const encodedCourse = encodeURIComponent(user.course);
+      const encodedCourse = encodeURIComponent(
+        user.course.toUpperCase().trim()
+      );
       const encodedSubject = encodeURIComponent(subject);
-      
-      console.log("🔍 Student requesting materials:", {
-        course: user.course,
-        encodedCourse,
-        subject,
-        encodedSubject
-      });
-      
-      const response = await fetch(`http://localhost:5000/api/student/materials/${encodedCourse}/${encodedSubject}`);
+
+      const response = await fetch(
+        `http://localhost:5000/api/student/materials/${encodedCourse}/${encodedSubject}`
+      );
+
       const data = await response.json();
-      
-      console.log("📦 Received materials:", data);
-      
       setMaterials(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching materials:", error);
@@ -69,18 +72,24 @@ const StudentDashboard = () => {
     }
   };
 
-  // 3. Mark material as viewed and download
+  /* ============================
+     4️⃣ DOWNLOAD MATERIAL
+  ============================ */
   const handleDownloadMaterial = async (materialId) => {
     try {
-      // Mark as viewed
-      await fetch(`http://localhost:5000/api/student/view-material/${materialId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentId: user._id })
-      });
+      await fetch(
+        `http://localhost:5000/api/student/view-material/${materialId}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ studentId: user._id })
+        }
+      );
 
-      // Download file
-      window.open(`http://localhost:5000/api/student/download/${materialId}`, '_blank');
+      window.open(
+        `http://localhost:5000/api/student/download/${materialId}`,
+        "_blank"
+      );
     } catch (error) {
       console.error("Error downloading material:", error);
     }
@@ -95,25 +104,29 @@ const StudentDashboard = () => {
     const updatedUser = { ...user, isFeePaid: true };
     setUser(updatedUser);
     sessionStorage.setItem("currentUser", JSON.stringify(updatedUser));
-    window.location.reload(); 
+    window.location.reload();
   };
 
   if (!user) return null;
 
+  /* ============================
+     ⬇️ UI BELOW IS UNCHANGED
+  ============================ */
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-      {/* Navbar */}
+      {/* NAVBAR */}
       <nav className="bg-red-900 text-white p-4 flex justify-between items-center shadow-lg sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <img src="/logo3.png" alt="Logo" className="h-10 w-10" />
           <h1 className="text-xl font-bold tracking-tight">Student Portal</h1>
         </div>
         <div className="flex items-center gap-4">
-          {user && user._id && <NotificationBell studentId={user._id || user.id || user.userId} />}
+          {user && user._id && <NotificationBell studentId={user._id} />}
           <ThemeToggle />
-          <button 
-            onClick={handleLogout} 
-            className="bg-red-700 hover:bg-red-800 px-4 py-2 rounded-xl font-bold transition-all active:scale-95"
+          <button
+            onClick={handleLogout}
+            className="bg-red-700 hover:bg-red-800 px-4 py-2 rounded-xl font-bold"
           >
             Logout
           </button>

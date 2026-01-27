@@ -19,25 +19,7 @@ const FacultyDashboard = () => {
   const [uploadMessage, setUploadMessage] = useState({ type: "", text: "" });
   const [myMaterials, setMyMaterials] = useState([]);
 
-  // 🔧 HELPER: Convert department short name to full course name that matches student's course field
-  const getCourseFullName = (dept) => {
-    const mapping = {
-      'BCA': 'BCA (Computer Applications)',
-      'BBA': 'BBA (Business Administration)',
-      'B.COM': 'B.COM (Commerce)',
-      'BCOM': 'B.COM (Commerce)',
-      'B.SC': 'B.SC (Science)',
-      'BSC': 'B.SC (Science)',
-      'BA': 'BA (Arts)',
-      'M.COM': 'M.COM (Commerce)',
-      'MBA': 'MBA (Business Administration)',
-      'MCA': 'MCA (Computer Applications)'
-    };
-    
-    const upperDept = dept?.toUpperCase().trim() || '';
-    return mapping[upperDept] || dept;
-  };
-
+  
   // --- 1. INITIAL LOAD ---
   useEffect(() => {
     const storedUser = sessionStorage.getItem("currentUser");
@@ -119,7 +101,7 @@ const FacultyDashboard = () => {
 
     const formData = new FormData();
     formData.append("title", materialForm.title);
-    formData.append("course", getCourseFullName(user.department)); // 🔧 Use full course name
+    formData.append("course", user.department.toUpperCase().trim());
     formData.append("subject", materialForm.subject);
     formData.append("uploadedBy", facultyId);
     formData.append("material", materialForm.file);
@@ -127,7 +109,6 @@ const FacultyDashboard = () => {
     console.log("Uploading material with:", {
       facultyId,
       department: user.department,
-      fullCourseName: getCourseFullName(user.department)
     }); // Debug log
 
     try {

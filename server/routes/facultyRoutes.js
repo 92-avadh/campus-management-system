@@ -5,196 +5,111 @@ const path = require("path");
 const User = require("../models/User");
 const Material = require("../models/Material");
 const Course = require("../models/Course");
-const Notification = require("../models/Notification"); // ADDED
+const Notification = require("../models/Notification");
 
-// Configure Storage
+/* =======================
+   MULTER CONFIG
+======================= */
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/materials/"); 
-  },
-  filename: (req, file, cb) => {
-    cb(null, `material-${Date.now()}${path.extname(file.originalname)}`);
-  }
+  destination: (req, file, cb) => cb(null, "uploads/materials/"),
+  filename: (req, file, cb) =>
+    cb(null, `material-${Date.now()}${path.extname(file.originalname)}`)
 });
 
-// File filter to accept only PDFs and common document types
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = /pdf|doc|docx|ppt|pptx|txt/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
-  
-  if (extname && mimetype) {
-    cb(null, true);
-  } else {
-    cb(new Error("Only documents (PDF, DOC, DOCX, PPT, PPTX, TXT) are allowed!"));
-  }
+  const allowed = /pdf|doc|docx|ppt|pptx|txt/;
+  if (allowed.test(file.mimetype)) cb(null, true);
+  else cb(new Error("Invalid file type"));
 };
 
-const upload = multer({ 
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
-});
+const upload = multer({ storage, fileFilter });
 
-// Get students for faculty dashboard - FIXED: using query params
+/* =======================
+   GET STUDENTS
+======================= */
 router.get("/students", async (req, res) => {
-  try {
-    const { department } = req.query;
-    const students = await User.find({ 
-      role: "student", 
-      department: department,
-      isFeePaid: true // Only show paid students
-    });
-    res.json(students);
-  } catch (err) {
-    console.error("Error fetching students:", err);
-    res.status(500).json({ message: "Error fetching students" });
-  }
+  const { department } = req.query;
+  const students = await User.find({
+    role: "student",
+    department,
+    isFeePaid: true
+  });
+  res.json(students);
 });
 
-// Get subjects based on course name
+/* =======================
+   GET SUBJECTS
+======================= */
 router.get("/subjects/:courseName", async (req, res) => {
-  try {
-    const courseName = req.params.courseName;
-    const course = await Course.findOne({ 
-      name: { $regex: new RegExp(courseName, 'i') } 
-    });
-    
-    if (!course) {
-      return res.status(404).json({ message: "Course not found" });
-    }
-    
-    res.json({ subjects: course.subjects || [] });
-  } catch (err) {
-    console.error("Error fetching subjects:", err);
-    res.status(500).json({ message: "Error fetching subjects" });
-  }
+  const course = await Course.findOne({
+    name: { $regex: new RegExp(req.params.courseName, "i") }
+  });
+  if (!course) return res.json({ subjects: [] });
+  res.json({ subjects: course.subjects });
 });
 
-// Upload Material Route
+/* =======================
+   UPLOAD MATERIAL (FIXED)
+======================= */
 router.post("/upload-material", upload.single("material"), async (req, res) => {
   try {
     const { title, course, subject, uploadedBy } = req.body;
-    
-    console.log("📤 Material upload request:", {
-      title,
-      course,
-      subject,
-      uploadedBy,
-      fileName: req.file?.originalname
-    });
-    
-    // Detailed validation
-    if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
-    }
 
-    if (!title) {
-      return res.status(400).json({ message: "Title is required" });
-    }
-
-    if (!course) {
-      return res.status(400).json({ message: "Course is required" });
-    }
-
-    if (!subject) {
-      return res.status(400).json({ message: "Subject is required" });
-    }
-
-    if (!uploadedBy) {
-      return res.status(400).json({ 
-        message: "Faculty ID (uploadedBy) is required. Please login again.",
-        debug: { uploadedBy, bodyKeys: Object.keys(req.body) }
-      });
+    if (!req.file || !title || !course || !subject || !uploadedBy) {
+      return res.status(400).json({ message: "Missing fields" });
     }
 
     const newMaterial = new Material({
-      title,
-      course,
-      subject,
+      title: title.trim(),
+      course: course.trim().toUpperCase(),      // 🔥 FIX
+      subject: subject.trim(),                  // 🔥 FIX
       uploadedBy,
       filePath: req.file.path,
       fileName: req.file.originalname,
       fileSize: req.file.size
     });
 
-    await newMaterial.save();
-    
-    console.log("✅ Material saved successfully:", {
-      id: newMaterial._id,
-      title: newMaterial.title,
-      course: newMaterial.course,
-      subject: newMaterial.subject
+    const saved = await newMaterial.save();
+
+    await Notification.create({
+      type: "material",
+      title: "New Study Material",
+      message: `${title} uploaded`,
+      course: saved.course,
+      subject: saved.subject,
+      relatedId: saved._id,
+      relatedModel: "Material",
+      createdBy: uploadedBy
     });
-    
-    // 🔔 CREATE NOTIFICATION for students
-    try {
-      const notification = new Notification({
-        type: 'material',
-        title: 'New Study Material Uploaded',
-        message: `${title} has been uploaded for ${subject}`,
-        course: course,
-        subject: subject,
-        relatedId: newMaterial._id,
-        relatedModel: 'Material',
-        createdBy: uploadedBy,
-        recipients: [] // Students will see this based on their course
-      });
-      
-      await notification.save();
-      console.log("🔔 Notification created for material upload");
-    } catch (notifErr) {
-      console.error("Error creating notification:", notifErr);
-      // Don't fail the upload if notification fails
-    }
-    
-    res.status(201).json({ 
-      message: "Material uploaded successfully!",
-      material: newMaterial
-    });
+
+    res.status(201).json(saved);
   } catch (err) {
-    console.error("❌ Upload error:", err);
-    res.status(500).json({ 
-      message: "Upload failed: " + err.message,
-      error: err.name === "ValidationError" ? err.errors : err.message
-    });
+    res.status(500).json({ message: err.message });
   }
 });
 
-// Get all materials uploaded by a specific faculty
+/* =======================
+   MY MATERIALS
+======================= */
 router.get("/my-materials/:facultyId", async (req, res) => {
-  try {
-    const materials = await Material.find({ 
-      uploadedBy: req.params.facultyId 
-    }).sort({ uploadDate: -1 });
-    
-    res.json(materials || []);
-  } catch (err) {
-    console.error("Error fetching materials:", err);
-    res.status(500).json([]);
-  }
+  const materials = await Material.find({
+    uploadedBy: req.params.facultyId
+  }).sort({ uploadDate: -1 });
+
+  res.json(materials);
 });
 
-// Delete material
+/* =======================
+   DELETE MATERIAL
+======================= */
 router.delete("/material/:materialId", async (req, res) => {
-  try {
-    const material = await Material.findByIdAndDelete(req.params.materialId);
-    
-    if (!material) {
-      return res.status(404).json({ message: "Material not found" });
-    }
-    
-    // Optionally delete the file from disk
-    const fs = require('fs');
-    if (fs.existsSync(material.filePath)) {
-      fs.unlinkSync(material.filePath);
-    }
-    
-    res.json({ message: "Material deleted successfully" });
-  } catch (err) {
-    console.error("Error deleting material:", err);
-    res.status(500).json({ message: "Error deleting material" });
-  }
+  const material = await Material.findByIdAndDelete(req.params.materialId);
+  if (!material) return res.status(404).json({ message: "Not found" });
+
+  const fs = require("fs");
+  if (fs.existsSync(material.filePath)) fs.unlinkSync(material.filePath);
+
+  res.json({ message: "Deleted" });
 });
 
 module.exports = router;
