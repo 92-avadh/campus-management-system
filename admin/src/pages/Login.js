@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import logo from "../logo3.png"; 
 
 const Login = () => {
@@ -10,7 +11,6 @@ const Login = () => {
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // --- STEP 1: VERIFY ID & PASSWORD ---
   const handleStep1 = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -18,15 +18,12 @@ const Login = () => {
       const response = await fetch("http://localhost:5000/api/auth/login-step1", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, password, role: "admin" }) // Role must match DB
+        body: JSON.stringify({ userId, password, role: "admin" })
       });
-
       const data = await response.json();
-
       if (response.ok) {
         setStep(2); 
       } else {
-        // This will now show the specific error (e.g., "Role mismatch" or "Invalid ID")
         alert(`❌ Login Failed: ${data.message}`);
       }
     } catch (err) {
@@ -36,7 +33,6 @@ const Login = () => {
     }
   };
 
-  // --- STEP 2: VERIFY OTP ---
   const handleStep2 = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -47,9 +43,7 @@ const Login = () => {
         body: JSON.stringify({ userId, otp })
       });
       const data = await response.json();
-
       if (response.ok) {
-        // FIXED: Using localStorage to match Dashboard.js auth check
         localStorage.setItem("adminUser", JSON.stringify(data.user));
         navigate("/dashboard");
       } else {
@@ -63,11 +57,14 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center font-sans">
-      
+    <motion.div 
+      initial={{ opacity: 0, y: 25 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -25 }}
+      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+      className="min-h-screen bg-gray-100 flex items-center justify-center font-sans"
+    >
       <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-sm flex flex-col items-center border-t-8 border-red-700">
-        
-        {/* LOGO AREA */}
         <div className="w-24 h-24 mb-6">
           <img src={logo} alt="Admin Logo" className="w-full h-full object-contain" />
         </div>
@@ -79,7 +76,6 @@ const Login = () => {
           {step === 1 ? "Please sign in to continue" : "Enter the verification code"}
         </p>
 
-        {/* STEP 1 FORM */}
         {step === 1 && (
           <form onSubmit={handleStep1} className="w-full space-y-5">
             <div>
@@ -113,13 +109,11 @@ const Login = () => {
           </form>
         )}
 
-        {/* STEP 2 FORM (OTP) */}
         {step === 2 && (
           <form onSubmit={handleStep2} className="w-full space-y-6 text-center">
             <div className="bg-red-50 p-4 rounded-lg text-sm text-red-800 border border-red-100">
               ⚡ Check your server console for the OTP code
             </div>
-
             <div>
                 <input 
                 type="text" 
@@ -133,14 +127,12 @@ const Login = () => {
                 required
                 />
             </div>
-
             <button 
               disabled={loading}
               className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl transition shadow-lg active:scale-95 disabled:opacity-50"
             >
               {loading ? "Verifying..." : "Verify & Access"}
             </button>
-
             <button 
               type="button" 
               onClick={() => setStep(1)} 
@@ -151,11 +143,10 @@ const Login = () => {
           </form>
         )}
       </div>
-      
       <div className="absolute bottom-6 text-gray-400 text-xs">
         &copy; 2026 SDJIC Campus System
       </div>
-    </div>
+    </motion.div>
   );
 };
 

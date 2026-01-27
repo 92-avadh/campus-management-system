@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import ThemeToggle from "../components/ThemeToggle";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   
-  // --- STATES ---
   const [applications, setApplications] = useState([]);
   const [filteredApps, setFilteredApps] = useState([]);
-  const [loading, setLoading] = useState(true); // Page-wide loading animation
-  const [activeTab, setActiveTab] = useState("requests"); // Controls sidebar navigation
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("requests");
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState(""); 
   const [selectedApp, setSelectedApp] = useState(null); 
@@ -21,14 +21,16 @@ const Dashboard = () => {
     name: "", email: "", phone: "", department: ""
   });
 
-  // --- FETCH APPLICATIONS ---
   const fetchApplications = () => {
     setIsRefreshing(true);
     fetch("http://localhost:5000/api/admin/applications")
       .then((res) => res.json())
       .then((data) => {
-        setApplications(data);
-        setFilteredApps(data);
+        // Filter out any applications that might still have 'rejected' status 
+        // if they weren't deleted previously
+        const pendingApps = data.filter(app => app.status !== "rejected");
+        setApplications(pendingApps);
+        setFilteredApps(pendingApps);
         setLoading(false);
         setTimeout(() => setIsRefreshing(false), 500);
       })
@@ -43,7 +45,6 @@ const Dashboard = () => {
     fetchApplications();
   }, []);
 
-  // --- UPDATED MERIT FILTER LOGIC ---
   useEffect(() => {
     let apps = [...applications];
     if (meritFilter === "80") {
@@ -58,7 +59,6 @@ const Dashboard = () => {
     setFilteredApps(apps.sort((a, b) => b.percentage - a.percentage));
   }, [meritFilter, applications]);
 
-  // --- ACTIONS ---
   const handleApprove = async (id) => {
     if (!window.confirm("Approve this student? Credentials will be emailed.")) return;
     try {
@@ -118,7 +118,6 @@ const Dashboard = () => {
     navigate("/");
   };
 
-  // --- PAGE LOADING ANIMATION ---
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
@@ -131,8 +130,13 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-      {/* --- SIDEBAR --- */}
+    <motion.div 
+      initial={{ opacity: 0, y: 25 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -25 }}
+      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+      className="flex min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300"
+    >
       <aside className="w-64 bg-red-900 text-white flex flex-col sticky top-0 h-screen shadow-2xl z-20">
         <div className="p-6 flex items-center gap-3 border-b border-red-800">
           <img src="/logo3.png" alt="Logo" className="h-10 w-10" />
@@ -174,7 +178,6 @@ const Dashboard = () => {
         </div>
       </aside>
 
-      {/* --- MAIN CONTENT --- */}
       <main className="flex-1 flex flex-col h-screen overflow-y-auto">
         <header className="bg-white dark:bg-gray-800 p-4 flex justify-between items-center border-b dark:border-gray-700 sticky top-0 z-10">
           <h2 className="text-lg font-bold dark:text-white uppercase tracking-tight">
@@ -183,10 +186,8 @@ const Dashboard = () => {
           <ThemeToggle />
         </header>
 
-        {/* --- ADDED CONTENT TRANSITION WRAPPER --- */}
         <div key={activeTab} className="p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {activeTab === "broadcast" ? (
-            /* --- BROADCAST VIEW --- */
             <div className="max-w-3xl mx-auto">
               <section className="bg-white dark:bg-gray-800 p-10 rounded-[2.5rem] shadow-xl border dark:border-gray-700">
                 <h3 className="text-3xl font-black mb-2 dark:text-white">Broadcast System Notice</h3>
@@ -212,7 +213,6 @@ const Dashboard = () => {
               </section>
             </div>
           ) : (
-            /* --- ADMISSION REQUESTS VIEW --- */
             <div>
               <div className="flex justify-between items-center mb-8">
                 <div>
@@ -251,7 +251,6 @@ const Dashboard = () => {
         </div>
       </main>
 
-      {/* --- ADD USER MODAL --- */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
           <div className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] w-full max-w-md shadow-2xl border dark:border-gray-700 animate-in zoom-in-95 duration-300">
@@ -270,46 +269,84 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* --- STUDENT DETAILS MODAL --- */}
       {selectedApp && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-[100]">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] w-full max-w-2xl shadow-2xl border dark:border-gray-700 animate-in zoom-in-95 duration-300">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] w-full max-w-2xl shadow-2xl border dark:border-gray-700 animate-in zoom-in-95 duration-300 overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-start mb-8">
               <h2 className="text-3xl font-black dark:text-white tracking-tighter">Student Profile</h2>
               <button onClick={() => setSelectedApp(null)} className="text-gray-400 hover:text-red-600 text-2xl">✕</button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-              <div className="space-y-4">
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-6">
                 <div className="flex items-center gap-4">
-                  <img src={`http://localhost:5000/${selectedApp.photo?.replace(/\\/g, '/')}`} className="w-24 h-24 rounded-3xl object-cover border-4 border-gray-50 dark:border-gray-700" alt="Profile" />
+                  <img src={`http://localhost:5000/${selectedApp.photo?.replace(/\\/g, '/')}`} className="w-28 h-28 rounded-3xl object-cover border-4 border-gray-50 dark:border-gray-700 shadow-lg" alt="Profile" />
                   <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase">Department</p>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Selected Course</p>
                     <p className="text-xl font-black text-red-700">{selectedApp.course}</p>
+                    <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full uppercase mt-1 inline-block">Pending Review</span>
                   </div>
                 </div>
-                <div>
-                  <label className="text-[10px] font-black uppercase text-gray-400 block mb-1">Full Name</label>
-                  <p className="font-bold dark:text-white">{selectedApp.name}</p>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-gray-400 block mb-1">Full Name</label>
+                    <p className="font-bold text-lg dark:text-white">{selectedApp.name}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] font-black uppercase text-gray-400 block mb-1">Gender</label>
+                      <p className="font-bold dark:text-white capitalize">{selectedApp.gender || "Not Provided"}</p>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black uppercase text-gray-400 block mb-1">Date of Birth</label>
+                      <p className="font-bold dark:text-white">{selectedApp.dob ? new Date(selectedApp.dob).toLocaleDateString() : "Not Provided"}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-gray-400 block mb-1">Residential Address</label>
+                    <p className="text-sm font-medium dark:text-gray-300 leading-relaxed bg-gray-50 dark:bg-gray-700/30 p-4 rounded-2xl italic border dark:border-gray-700">
+                      "{selectedApp.address || "No address details available."}"
+                    </p>
+                  </div>
                 </div>
               </div>
-              <div className="space-y-4">
-                <div className="bg-gray-50 dark:bg-gray-700/50 p-6 rounded-3xl">
-                  <label className="text-[10px] font-black uppercase text-gray-400 block mb-1">12th Percentage</label>
-                  <p className="text-4xl font-black text-gray-900 dark:text-white">{selectedApp.percentage}%</p>
+
+              <div className="space-y-6">
+                <div className="bg-red-50 dark:bg-red-900/10 p-6 rounded-[2rem] border border-red-100 dark:border-red-900/20">
+                  <label className="text-[10px] font-black uppercase text-red-400 block mb-1">Academic Merit (12th)</label>
+                  <p className="text-5xl font-black text-red-900 dark:text-red-500">{selectedApp.percentage}%</p>
                 </div>
-                <div className="pt-4">
-                  <a href={`http://localhost:5000/${selectedApp.marksheet?.replace(/\\/g, '/')}`} target="_blank" rel="noreferrer" className="block w-full text-center py-4 bg-gray-900 text-white dark:bg-white dark:text-gray-900 rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90">Open Marksheet</a>
+                
+                <div className="space-y-3">
+                    <label className="text-[10px] font-black uppercase text-gray-400 block px-1">Contact Information</label>
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-2xl border dark:border-gray-700">
+                        <span className="text-lg">📧</span>
+                        <p className="text-sm font-bold dark:text-white truncate">{selectedApp.email}</p>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-2xl border dark:border-gray-700">
+                        <span className="text-lg">📞</span>
+                        <p className="text-sm font-bold dark:text-white">{selectedApp.phone}</p>
+                    </div>
+                </div>
+
+                <div className="pt-2">
+                  <a href={`http://localhost:5000/${selectedApp.marksheet?.replace(/\\/g, '/')}`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 w-full py-4 bg-gray-900 text-white dark:bg-white dark:text-gray-900 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-[1.02] transition-transform shadow-xl">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    View Marksheet PDF
+                  </a>
                 </div>
               </div>
             </div>
+
             <div className="mt-10 flex gap-4 pt-6 border-t dark:border-gray-700">
-               <button onClick={() => { handleReject(selectedApp._id); setSelectedApp(null); }} className="flex-1 py-4 bg-red-100 text-red-700 rounded-2xl font-bold text-sm hover:bg-red-200">Reject</button>
+               <button onClick={() => { handleReject(selectedApp._id); setSelectedApp(null); }} className="flex-1 py-4 bg-red-100 text-red-700 rounded-2xl font-bold text-sm hover:bg-red-200 transition-colors">Reject Application</button>
                <button onClick={() => { handleApprove(selectedApp._id); setSelectedApp(null); }} className="flex-[2] py-4 bg-emerald-600 text-white rounded-2xl font-bold text-sm hover:bg-emerald-700 shadow-lg shadow-emerald-900/20 active:scale-95 transition-all">Approve Admission</button>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 

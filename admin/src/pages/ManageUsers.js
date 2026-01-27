@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import ThemeToggle from "../components/ThemeToggle";
 
 const ManageUsers = () => {
@@ -38,8 +39,27 @@ const ManageUsers = () => {
     }
   };
 
+  // Animation Variants (Matching your PageTransition style)
+  const pageVariants = {
+    initial: { opacity: 0, y: 25 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -25 }
+  };
+
+  const pageTransition = {
+    duration: 0.8,
+    ease: [0.22, 1, 0.36, 1]
+  };
+
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
+    <motion.div 
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      variants={pageVariants}
+      transition={pageTransition}
+      className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300"
+    >
       <nav className="bg-red-900 text-white p-4 flex justify-between items-center shadow-lg sticky top-0 z-50">
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/dashboard")}>
           <img src="/logo3.png" alt="Logo" className="h-10 w-10" />
@@ -59,7 +79,12 @@ const ManageUsers = () => {
           <p className="text-gray-500 dark:text-gray-400">View and manage all registered Admins, Faculty, and Students.</p>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] shadow-2xl border dark:border-gray-700 overflow-hidden">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          className="bg-white dark:bg-gray-800 rounded-[2.5rem] shadow-2xl border dark:border-gray-700 overflow-hidden"
+        >
           <table className="w-full text-left">
             <thead className="bg-gray-50 dark:bg-gray-700/50">
               <tr>
@@ -95,9 +120,9 @@ const ManageUsers = () => {
             </tbody>
           </table>
           {users.length === 0 && !loading && <p className="p-10 text-center text-gray-400 font-bold">No registered users found.</p>}
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

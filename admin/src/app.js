@@ -1,20 +1,23 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
 import ScrollToTop from "./components/ScrollToTop";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard"; 
-import ManageUsers from "./pages/ManageUsers"; // <--- ADD THIS IMPORT
+import ManageUsers from "./pages/ManageUsers";
 
-function App() {
+// Create a wrapper component to access useLocation
+const AnimatedRoutes = () => {
+  const location = useLocation();
+
   const PrivateRoute = ({ children }) => {
     const user = JSON.parse(localStorage.getItem("adminUser"));
     return user ? children : <Navigate to="/" />;
   };
 
   return (
-    <Router>
-      <ScrollToTop />
-      <Routes>
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Login />} />
         <Route 
           path="/dashboard" 
@@ -24,7 +27,6 @@ function App() {
             </PrivateRoute>
           } 
         />
-        {/* ADD THE MANAGE USERS ROUTE HERE */}
         <Route 
           path="/manage-users" 
           element={
@@ -34,6 +36,15 @@ function App() {
           } 
         />
       </Routes>
+    </AnimatePresence>
+  );
+};
+
+function App() {
+  return (
+    <Router>
+      <ScrollToTop />
+      <AnimatedRoutes />
     </Router>
   );
 }

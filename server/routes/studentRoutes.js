@@ -51,5 +51,16 @@ router.post("/apply", upload.fields([{ name: "photo" }, { name: "marksheet" }]),
     res.status(500).json({ message: "Server error during application." });
   }
 });
-
+// Mark material as viewed
+router.post("/view-material/:materialId", async (req, res) => {
+  try {
+    const { studentId } = req.body;
+    await Material.findByIdAndUpdate(req.params.materialId, {
+      $addToSet: { viewedBy: studentId } // Only adds if studentId isn't already there
+    });
+    res.json({ message: "Marked as viewed" });
+  } catch (err) {
+    res.status(500).json({ message: "Error updating view status" });
+  }
+});
 module.exports = router;
