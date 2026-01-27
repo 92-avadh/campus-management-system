@@ -1,13 +1,55 @@
 const mongoose = require("mongoose");
 
 const materialSchema = new mongoose.Schema({
-  title: String,
-  filePath: String,
-  subject: { type: mongoose.Schema.Types.ObjectId, ref: 'Subject' },
-  course: String, // e.g., "BCA", "BBA"
-  uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  uploadDate: { type: Date, default: Date.now },
-  isNewForStudents: { type: Boolean, default: true } // For notification badge
+  title: { 
+    type: String, 
+    required: true,
+    trim: true
+  },
+  filePath: { 
+    type: String, 
+    required: true 
+  },
+  fileName: {
+    type: String,
+    required: true
+  },
+  fileSize: {
+    type: Number
+  },
+  subject: { 
+    type: String, 
+    required: true,
+    trim: true
+  },
+  course: { 
+    type: String, 
+    required: true,
+    trim: true
+  },
+  uploadedBy: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User',
+    required: true
+  },
+  uploadDate: { 
+    type: Date, 
+    default: Date.now 
+  },
+  viewedBy: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  isNewForStudents: { 
+    type: Boolean, 
+    default: true 
+  }
+}, {
+  timestamps: true
 });
+
+// Index for faster queries
+materialSchema.index({ course: 1, subject: 1 });
+materialSchema.index({ uploadedBy: 1 });
 
 module.exports = mongoose.model("Material", materialSchema);

@@ -7,6 +7,36 @@ const FacultyDashboard = () => {
   const [user, setUser] = useState(null);
   const [students, setStudents] = useState([]);
   const [activeTab, setActiveTab] = useState("dashboard");
+  
+  // Material upload states
+  const [subjects, setSubjects] = useState([]);
+  const [materialForm, setMaterialForm] = useState({
+    title: "",
+    subject: "",
+    file: null
+  });
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState({ type: "", text: "" });
+  const [myMaterials, setMyMaterials] = useState([]);
+
+  // 🔧 HELPER: Convert department short name to full course name that matches student's course field
+  const getCourseFullName = (dept) => {
+    const mapping = {
+      'BCA': 'BCA (Computer Applications)',
+      'BBA': 'BBA (Business Administration)',
+      'B.COM': 'B.COM (Commerce)',
+      'BCOM': 'B.COM (Commerce)',
+      'B.SC': 'B.SC (Science)',
+      'BSC': 'B.SC (Science)',
+      'BA': 'BA (Arts)',
+      'M.COM': 'M.COM (Commerce)',
+      'MBA': 'MBA (Business Administration)',
+      'MCA': 'MCA (Computer Applications)'
+    };
+    
+    const upperDept = dept?.toUpperCase().trim() || '';
+    return mapping[upperDept] || dept;
+  };
 
   // --- 1. INITIAL LOAD ---
   useEffect(() => {
@@ -15,21 +45,134 @@ const FacultyDashboard = () => {
       navigate("/login");
     } else {
       const parsedUser = JSON.parse(storedUser);
+      console.log("Faculty User Data:", parsedUser); // Debug log
       setUser(parsedUser);
-      // Fetch students using the faculty's specific department
       fetchStudents(parsedUser.department);
+      fetchSubjects(parsedUser.department);
+      
+      // Handle different ID field names (_id, id, userId)
+      const facultyId = parsedUser._id || parsedUser.id || parsedUser.userId;
+      if (facultyId) {
+        fetchMyMaterials(facultyId);
+      } else {
+        console.error("No ID found in user object:", parsedUser);
+      }
     }
   }, [navigate]);
 
   // --- 2. FETCH STUDENTS ---
   const fetchStudents = async (dept) => {
     try {
-      // Passes the department as a query parameter to the filtered backend route
       const response = await fetch(`http://localhost:5000/api/faculty/students?department=${encodeURIComponent(dept)}`);
       const data = await response.json();
       setStudents(data);
     } catch (error) {
       console.error("Error fetching students:", error);
+    }
+  };
+
+  // --- 3. FETCH SUBJECTS ---
+  const fetchSubjects = async (courseName) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/courses/${encodeURIComponent(courseName)}`);
+      const data = await response.json();
+      if (data.subjects) {
+        setSubjects(data.subjects);
+      }
+    } catch (error) {
+      console.error("Error fetching subjects:", error);
+    }
+  };
+
+  // --- 4. FETCH MY MATERIALS ---
+  const fetchMyMaterials = async (facultyId) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/faculty/my-materials/${facultyId}`);
+      const data = await response.json();
+      setMyMaterials(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error fetching materials:", error);
+      setMyMaterials([]);
+    }
+  };
+
+  // --- 5. HANDLE MATERIAL UPLOAD ---
+  const handleMaterialUpload = async (e) => {
+    e.preventDefault();
+    
+    if (!materialForm.title || !materialForm.subject || !materialForm.file) {
+      setUploadMessage({ type: "error", text: "Please fill all fields and select a file" });
+      return;
+    }
+
+    // Get the faculty ID (handle different field names)
+    const facultyId = user._id || user.id || user.userId;
+    
+    if (!facultyId) {
+      setUploadMessage({ type: "error", text: "Faculty ID not found. Please login again." });
+      console.error("User object:", user);
+      return;
+    }
+
+    setUploadLoading(true);
+    setUploadMessage({ type: "", text: "" });
+
+    const formData = new FormData();
+    formData.append("title", materialForm.title);
+    formData.append("course", getCourseFullName(user.department)); // 🔧 Use full course name
+    formData.append("subject", materialForm.subject);
+    formData.append("uploadedBy", facultyId);
+    formData.append("material", materialForm.file);
+
+    console.log("Uploading material with:", {
+      facultyId,
+      department: user.department,
+      fullCourseName: getCourseFullName(user.department)
+    }); // Debug log
+
+    try {
+      const response = await fetch("http://localhost:5000/api/faculty/upload-material", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setUploadMessage({ type: "success", text: "Material uploaded successfully!" });
+        setMaterialForm({ title: "", subject: "", file: null });
+        document.getElementById("fileUpload").value = "";
+        fetchMyMaterials(facultyId);
+      } else {
+        setUploadMessage({ type: "error", text: data.message || "Upload failed" });
+      }
+    } catch (error) {
+      setUploadMessage({ type: "error", text: "Upload failed: " + error.message });
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
+  // --- 6. DELETE MATERIAL ---
+  const handleDeleteMaterial = async (materialId) => {
+    if (!window.confirm("Are you sure you want to delete this material?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/faculty/material/${materialId}`, {
+        method: "DELETE"
+      });
+
+      if (response.ok) {
+        setUploadMessage({ type: "success", text: "Material deleted successfully" });
+        const facultyId = user._id || user.id || user.userId;
+        fetchMyMaterials(facultyId);
+      } else {
+        setUploadMessage({ type: "error", text: "Failed to delete material" });
+      }
+    } catch (error) {
+      setUploadMessage({ type: "error", text: "Error deleting material" });
     }
   };
 
@@ -122,8 +265,8 @@ const FacultyDashboard = () => {
                   <p className="text-xl font-bold text-gray-800 dark:text-white">{user.department}</p>
                 </div>
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-                  <h3 className="text-gray-500 dark:text-gray-400 font-semibold">Faculty ID</h3>
-                  <p className="text-xl font-bold text-gray-800 dark:text-white">{user.userId}</p>
+                  <h3 className="text-gray-500 dark:text-gray-400 font-semibold">Materials Uploaded</h3>
+                  <p className="text-xl font-bold text-gray-800 dark:text-white">{Array.isArray(myMaterials) ? myMaterials.length : 0}</p>
                 </div>
               </div>
 
@@ -231,15 +374,96 @@ const FacultyDashboard = () => {
 
           {/* 4. MATERIALS VIEW */}
           {activeTab === "material" && (
-            <div className="max-w-3xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 text-center">
-              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-2xl p-10 bg-gray-50 dark:bg-gray-700/30">
-                <div className="text-6xl mb-4">📂</div>
-                <h2 className="text-xl font-bold text-gray-800 dark:text-white">Upload Study Material</h2>
-                <p className="text-gray-500 dark:text-gray-400 mb-6">Drag & drop PDF notes or assignments here</p>
-                <input type="file" className="hidden" id="fileUpload" />
-                <label htmlFor="fileUpload" className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition">
-                  Browse Files
-                </label>
+            <div className="space-y-6">
+              {/* Upload Form */}
+              <div className="max-w-3xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-6">Upload Study Material</h2>
+                
+                {uploadMessage.text && (
+                  <div className={`p-4 rounded-lg mb-4 ${uploadMessage.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {uploadMessage.text}
+                  </div>
+                )}
+
+                <form onSubmit={handleMaterialUpload} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Material Title</label>
+                    <input 
+                      type="text" 
+                      value={materialForm.title}
+                      onChange={(e) => setMaterialForm({...materialForm, title: e.target.value})}
+                      placeholder="e.g. Chapter 5 - Data Structures Notes" 
+                      className="w-full p-3 rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Select Subject</label>
+                    <select 
+                      value={materialForm.subject}
+                      onChange={(e) => setMaterialForm({...materialForm, subject: e.target.value})}
+                      className="w-full p-3 rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                      required
+                    >
+                      <option value="">-- Choose Subject --</option>
+                      {subjects.map((subject, idx) => (
+                        <option key={idx} value={subject}>{subject}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Upload File (PDF, DOC, PPT)</label>
+                    <input 
+                      type="file" 
+                      id="fileUpload"
+                      onChange={(e) => setMaterialForm({...materialForm, file: e.target.files[0]})}
+                      accept=".pdf,.doc,.docx,.ppt,.pptx,.txt"
+                      className="w-full p-3 rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                      required
+                    />
+                    {materialForm.file && (
+                      <p className="text-xs text-gray-500 mt-1">Selected: {materialForm.file.name}</p>
+                    )}
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    disabled={uploadLoading}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition disabled:opacity-50"
+                  >
+                    {uploadLoading ? "Uploading..." : "Upload Material"}
+                  </button>
+                </form>
+              </div>
+
+              {/* My Uploaded Materials */}
+              <div className="max-w-5xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-6">My Uploaded Materials</h2>
+                
+                {!Array.isArray(myMaterials) || myMaterials.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">No materials uploaded yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {myMaterials.map((material) => (
+                      <div key={material._id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                        <div className="flex-1">
+                          <h4 className="font-bold text-gray-800 dark:text-white">{material.title}</h4>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {material.subject} • {new Date(material.uploadDate).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <button 
+                          onClick={() => handleDeleteMaterial(material._id)}
+                          className="px-4 py-2 bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 rounded-lg text-sm font-bold transition"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
