@@ -10,7 +10,27 @@ const FacultyDashboard = () => {
   const [actionMsg, setActionMsg] = useState("");
   const [actionType, setActionType] = useState(""); // "success" | "error"
   const [msgTimer, setMsgTimer] = useState(null);
+ 
 
+  const showMessage = (message, type = "success") => {
+    // Clear old timer if exists
+    if (msgTimer) {
+      clearTimeout(msgTimer);
+    }
+  
+    // Set message + type
+    setActionMsg(message);
+    setActionType(type);
+  
+    // Start new timer
+    const timer = setTimeout(() => {
+      setActionMsg("");
+      setActionType("");
+    }, 3000); // 3 seconds
+  
+    setMsgTimer(timer);
+  };
+  
   // Material upload states
   const [subjects, setSubjects] = useState([]);
   const [materialForm, setMaterialForm] = useState({
@@ -19,7 +39,6 @@ const FacultyDashboard = () => {
     file: null
   });
   const [uploadLoading, setUploadLoading] = useState(false);
-  const [uploadMessage, setUploadMessage] = useState({ type: "", text: "" });
   const [myMaterials, setMyMaterials] = useState([]);
 
   
@@ -120,26 +139,23 @@ const FacultyDashboard = () => {
         body: formData
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setUploadMessage({ type: "success", text: "Material uploaded successfully!" });
-        setTimeout(() => {
-          setSuccessMsg("");
-        }, 3000);
-        setMaterialForm({ title: "", subject: "", file: null });
-        document.getElementById("fileUpload").value = "";
-        fetchMyMaterials(facultyId);
-      } else {
-        setUploadMessage({ type: "error", text: data.message || "Upload failed" });
+      if (!response.ok) {
+        throw new Error("Upload failed");
       }
+    
+      showMessage("📤 Material uploaded successfully", "success");
+    
+      // Refresh materials list
+      const facultyId = user._id || user.id || user.userId;
+      fetchMyMaterials(facultyId);
+    
     } catch (error) {
-      setUploadMessage({ type: "error", text: "Upload failed: " + error.message });
+      showMessage("❌ Material upload failed", "error");
     } finally {
       setUploadLoading(false);
     }
+    
   };
-
   // --- 6. DELETE MATERIAL ---
   const handleDeleteMaterial = async (materialId) => {
     if (!window.confirm("Are you sure you want to delete this material?")) {
@@ -147,20 +163,25 @@ const FacultyDashboard = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/faculty/material/${materialId}`, {
-        method: "DELETE"
-      });
-
-      if (response.ok) {
-        setUploadMessage({ type: "success", text: "Material deleted successfully" });
-        const facultyId = user._id || user.id || user.userId;
-        fetchMyMaterials(facultyId);
-      } else {
-        setUploadMessage({ type: "error", text: "Failed to delete material" });
+      const response = await fetch(
+        `http://localhost:5000/api/faculty/material/${materialId}`,
+        { method: "DELETE" }
+      );
+    
+      if (!response.ok) {
+        throw new Error("Delete failed");
       }
-    } catch (error) {
-      setUploadMessage({ type: "error", text: "Error deleting material" });
+    
+      showMessage("🗑️ Material deleted successfully", "success");
+    
+      // Refresh list
+      const facultyId = user._id || user.id || user.userId;
+      fetchMyMaterials(facultyId);
+    
+      } catch (error) {
+      showMessage("❌ Failed to delete material", "error");
     }
+    
   };
 
   const handleLogout = () => {
@@ -172,7 +193,17 @@ const FacultyDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans flex transition-colors duration-300">
-      
+       {actionMsg && (
+      <div
+        className={`mb-6 p-4 rounded-lg font-semibold ${
+          actionType === "success"
+            ? "bg-green-100 text-green-700"
+            : "bg-red-100 text-red-700"
+        }`}
+      >
+        {actionMsg}
+      </div>
+    )}
       {/* === SIDEBAR PANEL === */}
       <aside className="w-64 bg-blue-900 dark:bg-black text-white flex flex-col shadow-2xl sticky top-0 h-screen z-20 transition-colors">
         <div className="p-6 border-b border-blue-800 dark:border-gray-800">
@@ -366,11 +397,7 @@ const FacultyDashboard = () => {
               <div className="max-w-3xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
                 <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-6">Upload Study Material</h2>
                 
-                {uploadMessage.text && (
-                  <div className={`p-4 rounded-lg mb-4 ${uploadMessage.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {uploadMessage.text}
-                  </div>
-                )}
+                
 
                 <form onSubmit={handleMaterialUpload} className="space-y-4">
                   <div>
