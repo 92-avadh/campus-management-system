@@ -22,6 +22,12 @@ const StudentDashboard = () => {
       navigate("/login");
     } else {
       const userData = JSON.parse(storedUser);
+      console.log("🔍 StudentDashboard - Loaded user:", userData);
+      
+      // ✅ FIX: Use either _id or id (whichever exists)
+      const userId = userData._id || userData.id;
+      console.log("🔍 User ID for notifications:", userId);
+      
       setUser(userData);
     }
   }, [navigate]);
@@ -77,12 +83,14 @@ const StudentDashboard = () => {
   ============================ */
   const handleDownloadMaterial = async (materialId) => {
     try {
+      const userId = user._id || user.id; // ✅ FIX: Handle both field names
+      
       await fetch(
         `http://localhost:5000/api/student/view-material/${materialId}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ studentId: user._id })
+          body: JSON.stringify({ studentId: userId })
         }
       );
 
@@ -109,8 +117,11 @@ const StudentDashboard = () => {
 
   if (!user) return null;
 
+  // ✅ FIX: Get user ID (support both _id and id)
+  const userId = user._id || user.id;
+
   /* ============================
-     ⬇️ UI BELOW IS UNCHANGED
+     ⬇️ UI BELOW
   ============================ */
 
   return (
@@ -122,7 +133,12 @@ const StudentDashboard = () => {
           <h1 className="text-xl font-bold tracking-tight">Student Portal</h1>
         </div>
         <div className="flex items-center gap-4">
-          {user && user._id && <NotificationBell studentId={user._id} />}
+          {/* ✅ FIX: Use userId variable that handles both _id and id */}
+          {userId ? (
+            <NotificationBell studentId={userId} />
+          ) : (
+            <div className="text-yellow-300 text-xs">⚠️ No user ID</div>
+          )}
           <ThemeToggle />
           <button
             onClick={handleLogout}
@@ -141,7 +157,7 @@ const StudentDashboard = () => {
               {user.name.charAt(0)}
             </div>
             <h2 className="font-bold text-gray-800 dark:text-white text-center">{user.name}</h2>
-            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">{user.course}</p>
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">{user.course || user.department}</p>
           </div>
 
           <nav className="space-y-3">
@@ -163,21 +179,24 @@ const StudentDashboard = () => {
                     : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700/50"
                 }`}
               >
-                <span>{item.icon}</span> {item.label}
+                <span className="text-2xl">{item.icon}</span>
+                <span>{item.label}</span>
               </button>
             ))}
           </nav>
         </aside>
 
-        {/* Main Area */}
-        <main className="flex-1 p-6 md:p-12">
+        {/* Main Content */}
+        <main className="flex-1 p-8">
           {activeTab === "dashboard" && (
-            <div className="animate-in fade-in duration-500">
-              <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-8 tracking-tight">Overview</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="max-w-6xl mx-auto animate-in zoom-in-95 duration-300">
+              <h1 className="text-4xl font-black mb-10 text-gray-900 dark:text-white tracking-tighter">
+                Welcome back, {user.name}! 👋
+              </h1>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <div className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] shadow-xl border dark:border-gray-700">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Current Enrollment</p>
-                    <h3 className="text-2xl font-black text-red-700">{user.course}</h3>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Enrolled Course</p>
+                    <h3 className="text-2xl font-black text-gray-900 dark:text-white mt-1">{user.course || user.department}</h3>
                     <p className="text-sm text-gray-500 mt-4">University ID: <span className="font-mono font-bold text-gray-900 dark:text-white">{user.userId}</span></p>
                  </div>
                  <div className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] shadow-xl border dark:border-gray-700">
@@ -221,7 +240,7 @@ const StudentDashboard = () => {
                     <div className="bg-white dark:bg-gray-800 p-10 rounded-[2.5rem] shadow-2xl border dark:border-gray-700">
                       <div className="flex justify-between items-center mb-10">
                         <h2 className="text-3xl font-black dark:text-white tracking-tighter">Course Subjects</h2>
-                        <span className="bg-red-100 text-red-700 text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest">{user.course}</span>
+                        <span className="bg-red-100 text-red-700 text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest">{user.course || user.department}</span>
                       </div>
                       {subjects.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

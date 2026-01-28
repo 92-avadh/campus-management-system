@@ -1,28 +1,41 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 
 const NotificationBell = ({ studentId }) => {
+  // ALL HOOKS MUST BE DECLARED FIRST - BEFORE ANY CONDITIONAL RETURNS
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef(null);
 
+  // Debug: Log when component mounts and receives studentId
+  useEffect(() => {
+    console.log("🔔 NotificationBell mounted with studentId:", studentId);
+  }, [studentId]);
+
   // Fetch unread count
   const fetchUnreadCount = useCallback(async () => {
-    if (!studentId) return;
+    if (!studentId) {
+      console.log("⚠️ No studentId - skipping fetchUnreadCount");
+      return;
+    }
     
     try {
       const response = await fetch(`http://localhost:5000/api/student/notifications/${studentId}/unread-count`);
       const data = await response.json();
+      console.log("📊 Unread count fetched:", data.count);
       setUnreadCount(data.count || 0);
     } catch (error) {
-      console.error("Error fetching unread count:", error);
+      console.error("❌ Error fetching unread count:", error);
     }
   }, [studentId]);
 
   // Fetch all notifications
   const fetchNotifications = useCallback(async () => {
-    if (!studentId) return;
+    if (!studentId) {
+      console.log("⚠️ No studentId - skipping fetchNotifications");
+      return;
+    }
     
     setLoading(true);
     try {
@@ -32,7 +45,7 @@ const NotificationBell = ({ studentId }) => {
       console.log("📦 Received notifications:", data);
       setNotifications(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error("Error fetching notifications:", error);
+      console.error("❌ Error fetching notifications:", error);
       setNotifications([]);
     } finally {
       setLoading(false);
@@ -57,7 +70,7 @@ const NotificationBell = ({ studentId }) => {
       
       fetchUnreadCount();
     } catch (error) {
-      console.error("Error marking as read:", error);
+      console.error("❌ Error marking as read:", error);
     }
   }, [studentId, fetchUnreadCount]);
 
@@ -75,12 +88,13 @@ const NotificationBell = ({ studentId }) => {
       setNotifications(prev => prev.map(notif => ({ ...notif, read: true })));
       setUnreadCount(0);
     } catch (error) {
-      console.error("Error marking all as read:", error);
+      console.error("❌ Error marking all as read:", error);
     }
   }, [studentId]);
 
   // Toggle dropdown
   const toggleDropdown = () => {
+    console.log("🔄 Toggle dropdown, current state:", showDropdown);
     setShowDropdown(!showDropdown);
     if (!showDropdown) {
       fetchNotifications();
@@ -101,8 +115,12 @@ const NotificationBell = ({ studentId }) => {
 
   // Fetch unread count on mount and every 30 seconds
   useEffect(() => {
-    if (!studentId) return;
+    if (!studentId) {
+      console.log("⚠️ No studentId available for polling");
+      return;
+    }
     
+    console.log("⏰ Setting up unread count polling");
     fetchUnreadCount();
     const interval = setInterval(fetchUnreadCount, 30000); // Poll every 30 seconds
     return () => clearInterval(interval);
@@ -138,18 +156,28 @@ const NotificationBell = ({ studentId }) => {
     return notifDate.toLocaleDateString();
   };
 
+  // ✅ GUARD CLAUSE AFTER ALL HOOKS - This is the correct pattern
+  if (!studentId) {
+    console.warn("⚠️ NotificationBell: No studentId provided - returning null");
+    return null;
+  }
+
+  console.log("✅ NotificationBell: Rendering successfully with studentId:", studentId);
+
   return (
     <div className="relative" ref={dropdownRef}>
       {/* Bell Icon */}
       <button
         onClick={toggleDropdown}
         className="relative p-2 rounded-full hover:bg-red-800 transition-colors"
+        title="Notifications"
       >
         <svg
           className="w-6 h-6 text-white"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
         >
           <path
             strokeLinecap="round"
@@ -161,7 +189,7 @@ const NotificationBell = ({ studentId }) => {
         
         {/* Unread Badge */}
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-yellow-500 rounded-full animate-pulse">
+          <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-yellow-500 rounded-full">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -258,7 +286,6 @@ const NotificationBell = ({ studentId }) => {
               <button
                 onClick={() => {
                   setShowDropdown(false);
-                  // Could navigate to a full notifications page
                 }}
                 className="text-sm text-red-600 hover:text-red-700 font-semibold"
               >
