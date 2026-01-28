@@ -7,20 +7,22 @@ const userSchema = new mongoose.Schema({
   role: { type: String, required: true, enum: ["admin", "student", "faculty"] },
   userId: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  
+
   // Student Specific
   course: { type: String },
   department: { type: String },
   percentage: { type: Number },
   isFeePaid: { type: Boolean, default: false },
-  
-  // Documents
-  photo: { type: String },
-  marksheet: { type: String },
 
-  // OTP FIELDS (New)
+  // Documents
+  photo: { type: String },      
+  marksheet: { type: String },
+  dob: { type: Date },
+  address: { type: String },
+  
+  // OTP
   otp: { type: String },
   otpExpires: { type: Date }
-});
+}, { timestamps: true });
 
 module.exports = mongoose.model("User", userSchema);

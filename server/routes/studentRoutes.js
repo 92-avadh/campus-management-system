@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 const path = require("path");
+const bcrypt = require("bcryptjs");
+
 const Application = require("../models/Application");
 const User = require("../models/User");
 const Material = require("../models/Material");
@@ -35,7 +37,7 @@ router.post(
 );
 
 /* =======================
-   GET MATERIALS (FINAL FIX)
+   GET MATERIALS
 ======================= */
 router.get("/materials/:course/:subject", async (req, res) => {
   try {
@@ -59,7 +61,6 @@ router.get("/materials/:course/:subject", async (req, res) => {
     res.status(500).json({ message: "Error fetching materials" });
   }
 });
-
 
 /* =======================
    MARK MATERIAL AS VIEWED
@@ -90,6 +91,85 @@ router.get("/download/:materialId", async (req, res) => {
     res.download(material.filePath, material.fileName);
   } catch (err) {
     res.status(500).json({ message: "Download failed" });
+  }
+});
+
+// GET STUDENT BY ID (FETCH FRESH DATA)
+router.get("/profile/:studentId", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.studentId).select("-password");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch user profile" });
+  }
+});
+
+/* =======================
+   UPDATE PROFILE
+======================= */
+router.put("/update-profile/:studentId", async (req, res) => {
+  try {
+    const { name, phone, dob, address } = req.body;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.studentId,
+      {
+        name,
+        phone,
+        dob: dob ? new Date(dob) : null,
+        address
+      },
+      { new: true }
+    ).select("-password");
+
+    res.json(updatedUser);
+  } catch (err) {
+    console.error("❌ Profile update error:", err);
+    res.status(500).json({ message: "Profile update failed" });
+  }
+});
+
+
+/* =======================
+   CHANGE PASSWORD
+======================= */
+router.put("/change-password/:studentId", async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+
+    const user = await User.findById(req.params.studentId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Old password incorrect" });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    res.json({ message: "Password updated successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Password update failed" });
+  }
+});
+// =======================
+// GET STUDENT PROFILE (DB)
+// =======================
+router.get("/profile/:studentId", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.studentId).select("-password");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch user profile" });
   }
 });
 

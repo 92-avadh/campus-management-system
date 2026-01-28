@@ -12,26 +12,57 @@ const StudentDashboard = () => {
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [materials, setMaterials] = useState([]);
   const [loadingMaterials, setLoadingMaterials] = useState(false);
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+const [successMsg, setSuccessMsg] = useState("");
 
+const [confirmPassword, setConfirmPassword] = useState("");
+const [profileData, setProfileData] = useState({
+  name: "",
+  phone: "",
+  dob: "",
+  address: ""
+})
   /* ============================
      1️⃣ LOAD USER (ONCE)
   ============================ */
   useEffect(() => {
     const storedUser = sessionStorage.getItem("currentUser");
+  
     if (!storedUser) {
       navigate("/login");
-    } else {
-      const userData = JSON.parse(storedUser);
-      console.log("🔍 StudentDashboard - Loaded user:", userData);
-      
-      // ✅ FIX: Use either _id or id (whichever exists)
-      const userId = userData._id || userData.id;
-      console.log("🔍 User ID for notifications:", userId);
-      
-      setUser(userData);
+      return;
     }
+  
+    const parsedUser = JSON.parse(storedUser);
+    const userId = parsedUser._id || parsedUser.id;
+  
+    const fetchUserFromDB = async () => {
+      try {
+        const res = await fetch(
+          `http://localhost:5000/api/student/profile/${userId}`
+        );
+  
+        const freshUser = await res.json();
+  
+        setUser(freshUser);
+        setProfileData({
+          name: freshUser.name || "",
+          phone: freshUser.phone || "",
+          dob: freshUser.dob ? freshUser.dob.slice(0, 10) : "",
+          address: freshUser.address || ""
+        });
+  
+        sessionStorage.setItem("currentUser", JSON.stringify(freshUser));
+      } catch (err) {
+        console.error("Failed to fetch user from DB", err);
+      }
+    };
+  
+    fetchUserFromDB();
   }, [navigate]);
-
+  
   /* ============================
      2️⃣ FETCH SUBJECTS (FIXED)
   ============================ */
@@ -153,8 +184,15 @@ const StudentDashboard = () => {
         {/* Sidebar */}
         <aside className="w-72 min-h-screen bg-white dark:bg-gray-800 shadow-xl p-6 hidden md:block">
           <div className="flex flex-col items-center mb-10 pb-6 border-b dark:border-gray-700">
-            <div className="w-20 h-20 bg-red-100 text-red-700 rounded-3xl flex items-center justify-center text-3xl font-black mb-3">
-              {user.name.charAt(0)}
+          <div className="w-20 h-20 rounded-3xl overflow-hidden mb-3 border-2 border-red-500">
+              <img
+                src={`http://localhost:5000/${user.photo}`}
+                alt="Profile"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.src = "/default-avatar.png"; // fallback
+                }}
+              />
             </div>
             <h2 className="font-bold text-gray-800 dark:text-white text-center">{user.name}</h2>
             <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">{user.course || user.department}</p>
@@ -165,7 +203,9 @@ const StudentDashboard = () => {
               { id: "dashboard", label: "Dashboard", icon: "🏠" },
               { id: "fees", label: "Fee Payment", icon: "💳" },
               { id: "courses", label: "My Courses", icon: "📚" },
-              { id: "attendance", label: "Attendance", icon: "📅" }
+              { id: "attendance", label: "Attendance", icon: "📅" },
+              { id: "profile", label: "Profile Settings", icon: "👤" }
+
             ].map((item) => (
               <button
                 key={item.id}
@@ -352,6 +392,194 @@ const StudentDashboard = () => {
                 <p className="text-gray-400 font-bold uppercase tracking-widest text-sm">Attendance Module Coming Soon</p>
              </div>
           )}
+
+      
+{activeTab === "profile" && (
+  <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 p-10 rounded-[2.5rem] shadow-2xl relative">
+
+    {/* HEADER */}
+    <div className="flex justify-between items-center mb-8">
+      <h2 className="text-3xl font-black text-gray-900 dark:text-white">
+        Profile Details
+      </h2>
+
+      <button
+        onClick={() => {
+          if (isEditing) {
+            // Reset values on cancel
+            setProfileData({
+              name: user.name || "",
+              phone: user.phone || "",
+              dob: user.dob ? user.dob.slice(0, 10) : "",
+              address: user.address || ""
+            });
+          }
+          setIsEditing(!isEditing);
+          setSuccessMsg("");
+        }}
+        
+        className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-bold"
+      >
+        {isEditing ? "Cancel" : "Edit Profile"}
+      </button>
+    </div>
+
+    {/* SUCCESS MESSAGE */}
+    {successMsg && (
+      <div className="mb-6 p-4 rounded-xl bg-green-100 text-green-700 font-bold">
+        {successMsg}
+      </div>
+    )}
+
+    {/* PROFILE FIELDS */}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+      {/* NAME */}
+      <div>
+        <label className="text-sm font-bold text-gray-500">Full Name</label>
+        <input
+          value={profileData.name}
+          disabled={!isEditing}
+          onChange={(e) =>
+            setProfileData({ ...profileData, name: e.target.value })
+          }
+          className="w-full p-4 mt-1 rounded-xl border disabled:bg-gray-100"
+        />
+      </div>
+
+      {/* MOBILE */}
+      <div>
+        <label className="text-sm font-bold text-gray-500">Mobile Number</label>
+        <input
+          value={profileData.phone}
+          disabled={!isEditing}
+          onChange={(e) =>
+            setProfileData({ ...profileData, phone: e.target.value })
+          }
+          className="w-full p-4 mt-1 rounded-xl border disabled:bg-gray-100"
+        />
+      </div>
+
+      {/* DOB */}
+      <div>
+        <label className="text-sm font-bold text-gray-500">Date of Birth</label>
+        <input
+          type="date"
+          value={profileData.dob}
+          disabled={!isEditing}
+          onChange={(e) =>
+            setProfileData({ ...profileData, dob: e.target.value })
+          }
+          className="w-full p-4 mt-1 rounded-xl border disabled:bg-gray-100"
+        />
+      </div>
+
+      {/* ADDRESS */}
+      <div>
+        <label className="text-sm font-bold text-gray-500">Address</label>
+        <textarea
+          value={profileData.address}
+          disabled={!isEditing}
+          onChange={(e) =>
+            setProfileData({ ...profileData, address: e.target.value })
+          }
+          className="w-full p-4 mt-1 rounded-xl border disabled:bg-gray-100"
+        />
+      </div>
+    </div>
+
+    {/* SAVE BUTTON */}
+    {isEditing && (
+      <div className="mt-8">
+        <button
+          onClick={async () => {
+            const res = await fetch(
+              `http://localhost:5000/api/student/update-profile/${user._id}`,
+              {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(profileData)
+              }
+            );
+
+            const updated = await res.json();
+            setUser(updated);
+            sessionStorage.setItem("currentUser", JSON.stringify(updated));
+            setIsEditing(false);
+            setSuccessMsg("✅ Profile updated successfully");
+            setTimeout(() => {
+              setSuccessMsg("");
+            }, 3000);
+          }}
+          className="bg-black hover:bg-gray-900 text-white px-8 py-4 rounded-xl font-bold"
+        >
+          Save Changes
+        </button>
+      </div>
+    )}
+
+    <hr className="my-10" />
+
+    {/* PASSWORD SECTION */}
+    <h3 className="text-2xl font-black mb-6 text-gray-900 dark:text-white">
+      Change Password
+    </h3>
+
+    <input
+      type="password"
+      placeholder="Old Password"
+      onChange={(e) => setOldPassword(e.target.value)}
+      className="w-full p-4 mb-4 rounded-xl border"
+    />
+
+    <input
+      type="password"
+      placeholder="New Password"
+      onChange={(e) => setNewPassword(e.target.value)}
+      className="w-full p-4 mb-4 rounded-xl border"
+    />
+
+    <input
+      type="password"
+      placeholder="Confirm New Password"
+      onChange={(e) => setConfirmPassword(e.target.value)}
+      className="w-full p-4 mb-6 rounded-xl border"
+    />
+
+    <button
+      onClick={async () => {
+        if (newPassword !== confirmPassword) {
+          alert("Passwords do not match");
+          return;
+        }
+
+        const res = await fetch(
+          `http://localhost:5000/api/student/change-password/${user._id}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ oldPassword, newPassword })
+          }
+        );
+
+        const data = await res.json();
+        if (res.ok) {
+          alert(data.message);
+        
+          // 🔥 CLEAR FIELDS
+          setOldPassword("");
+          setNewPassword("");
+          setConfirmPassword("");
+        }
+      }}
+      className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-xl font-bold"
+    >
+      Update Password
+    </button>
+  </div>
+)}
+
+
         </main>
       </div>
     </div>

@@ -7,7 +7,10 @@ const FacultyDashboard = () => {
   const [user, setUser] = useState(null);
   const [students, setStudents] = useState([]);
   const [activeTab, setActiveTab] = useState("dashboard");
-  
+  const [actionMsg, setActionMsg] = useState("");
+  const [actionType, setActionType] = useState(""); // "success" | "error"
+  const [msgTimer, setMsgTimer] = useState(null);
+
   // Material upload states
   const [subjects, setSubjects] = useState([]);
   const [materialForm, setMaterialForm] = useState({
@@ -121,6 +124,9 @@ const FacultyDashboard = () => {
 
       if (response.ok) {
         setUploadMessage({ type: "success", text: "Material uploaded successfully!" });
+        setTimeout(() => {
+          setSuccessMsg("");
+        }, 3000);
         setMaterialForm({ title: "", subject: "", file: null });
         document.getElementById("fileUpload").value = "";
         fetchMyMaterials(facultyId);

@@ -122,7 +122,7 @@ const NotificationBell = ({ studentId }) => {
     
     console.log("⏰ Setting up unread count polling");
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000); // Poll every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 5000);
     return () => clearInterval(interval);
   }, [studentId, fetchUnreadCount]);
 

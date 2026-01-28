@@ -46,6 +46,7 @@ app.use("/api/student", notificationRoutes);       // ✅ For notifications
 app.use("/api/payment", paymentRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/faculty", facultyRoutes);
+app.use("/uploads", express.static("uploads"));
 
 // Test route
 app.get("/", (req, res) => {
