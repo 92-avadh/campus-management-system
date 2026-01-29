@@ -4,14 +4,14 @@ import { AnimatePresence } from "framer-motion";
 import ScrollToTop from "./components/ScrollToTop";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard"; 
-import ManageUsers from "./pages/ManageUsers";
 
-// Create a wrapper component to access useLocation
+// Wrapper for AnimatePresence
 const AnimatedRoutes = () => {
   const location = useLocation();
 
   const PrivateRoute = ({ children }) => {
-    const user = JSON.parse(localStorage.getItem("adminUser"));
+    // Check for adminUser in localStorage (or sessionStorage if you changed it)
+    const user = JSON.parse(localStorage.getItem("adminUser")); 
     return user ? children : <Navigate to="/" />;
   };
 
@@ -19,6 +19,8 @@ const AnimatedRoutes = () => {
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Login />} />
+        
+        {/* ✅ Dashboard now handles everything (Users, Courses, Admissions) */}
         <Route 
           path="/dashboard" 
           element={
@@ -27,14 +29,8 @@ const AnimatedRoutes = () => {
             </PrivateRoute>
           } 
         />
-        <Route 
-          path="/manage-users" 
-          element={
-            <PrivateRoute>
-              <ManageUsers />
-            </PrivateRoute>
-          } 
-        />
+        
+        {/* ❌ REMOVED: /manage-users route (It's now a tab in Dashboard) */}
       </Routes>
     </AnimatePresence>
   );

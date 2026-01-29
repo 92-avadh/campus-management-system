@@ -3,14 +3,24 @@ const router = express.Router();
 const multer = require("multer");
 const path = require("path");
 const bcrypt = require("bcryptjs");
+const nodemailer = require("nodemailer");
 
+// Models
 const Application = require("../models/Application");
 const User = require("../models/User");
 const Material = require("../models/Material");
+const Attendance = require("../models/Attendance");
 
-/* =======================
-   APPLY FORM
-======================= */
+// ✅ EMAIL TRANSPORTER
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+// ✅ MULTER STORAGE (File Uploads)
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "uploads/"),
   filename: (req, file, cb) =>
@@ -18,27 +28,53 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+/* =========================================
+   1. APPLY FOR ADMISSION (With Email)
+========================================= */
 router.post(
   "/apply",
   upload.fields([{ name: "photo" }, { name: "marksheet" }]),
   async (req, res) => {
     try {
       const exists = await User.findOne({ email: req.body.email });
-      if (exists) {
-        return res.status(400).json({ message: "Already enrolled" });
-      }
+      if (exists) return res.status(400).json({ message: "Already enrolled" });
 
       await new Application(req.body).save();
-      res.json({ message: "Application submitted successfully" });
+
+      // Professional Acknowledgement Email
+      const mailOptions = {
+        from: '"ST College Admissions" <admissions@stcollege.edu>',
+        to: req.body.email,
+        subject: "🎓 Application Received - ST College",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 8px;">
+            <div style="background-color: #1e293b; padding: 20px; text-align: center; color: white;">
+              <h2>ST College Admissions</h2>
+            </div>
+            <div style="padding: 20px;">
+              <p>Dear <strong>${req.body.name}</strong>,</p>
+              <p>We have successfully received your application for the <strong>${req.body.course}</strong> program.</p>
+              <p>Our team will review your documents shortly.</p>
+              <p>Reference No: <strong>APP-${Date.now()}</strong></p>
+              <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+              <p style="font-size: 12px; color: #888; text-align: center;">ST College, Surat - Admission Cell</p>
+            </div>
+          </div>
+        `
+      };
+      await transporter.sendMail(mailOptions);
+
+      res.json({ message: "Application submitted successfully! Check your email." });
     } catch (err) {
+      console.error(err);
       res.status(500).json({ message: "Application failed" });
     }
   }
 );
 
-/* =======================
-   GET MATERIALS
-======================= */
+/* =========================================
+   2. GET MATERIALS
+========================================= */
 router.get("/materials/:course/:subject", async (req, res) => {
   try {
     const rawCourse = decodeURIComponent(req.params.course).toUpperCase();
@@ -62,114 +98,162 @@ router.get("/materials/:course/:subject", async (req, res) => {
   }
 });
 
-/* =======================
-   MARK MATERIAL AS VIEWED
-======================= */
+/* =========================================
+   3. MARK MATERIAL AS VIEWED
+========================================= */
 router.post("/view-material/:materialId", async (req, res) => {
   try {
     await Material.findByIdAndUpdate(req.params.materialId, {
       $addToSet: { viewedBy: req.body.studentId },
       isNewForStudents: false
     });
-
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false });
   }
 });
 
-/* =======================
-   DOWNLOAD MATERIAL
-======================= */
+/* =========================================
+   4. DOWNLOAD MATERIAL
+========================================= */
 router.get("/download/:materialId", async (req, res) => {
   try {
     const material = await Material.findById(req.params.materialId);
-    if (!material) {
-      return res.status(404).json({ message: "Material not found" });
-    }
-
+    if (!material) return res.status(404).json({ message: "Material not found" });
     res.download(material.filePath, material.fileName);
   } catch (err) {
     res.status(500).json({ message: "Download failed" });
   }
 });
 
-// GET STUDENT BY ID (FETCH FRESH DATA)
-router.get("/profile/:studentId", async (req, res) => {
+/* =========================================
+   5. MARK ATTENDANCE (QR)
+========================================= */
+router.post("/mark-attendance", async (req, res) => {
   try {
-    const user = await User.findById(req.params.studentId).select("-password");
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
+    const { studentId, qrData } = req.body;
+    let parsedData;
+    try { parsedData = JSON.parse(qrData); } catch (e) { return res.status(400).json({ message: "Invalid QR" }); }
+    
+    // Check Timeliness (30s)
+    if ((Date.now() - parsedData.timestamp) / 1000 > 30) {
+      return res.status(400).json({ message: "QR Expired!" });
     }
-    res.json(user);
+
+    // Check Duplicates
+    const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
+    const endOfDay = new Date(); endOfDay.setHours(23,59,59,999);
+    
+    const existing = await Attendance.findOne({
+      studentId,
+      subject: parsedData.subject,
+      date: { $gte: startOfDay, $lte: endOfDay }
+    });
+
+    if (existing) return res.status(400).json({ message: "Attendance already marked." });
+
+    await new Attendance({
+      studentId,
+      subject: parsedData.subject,
+      status: "Present",
+      date: new Date()
+    }).save();
+
+    res.json({ success: true, message: "Attendance Marked!" });
   } catch (err) {
-    res.status(500).json({ message: "Failed to fetch user profile" });
+    res.status(500).json({ message: "Attendance Error" });
   }
 });
 
-/* =======================
-   UPDATE PROFILE
-======================= */
-router.put("/update-profile/:studentId", async (req, res) => {
+/* =========================================
+   6. ATTENDANCE HISTORY
+========================================= */
+router.get("/attendance/:studentId", async (req, res) => {
   try {
-    const { name, phone, dob, address } = req.body;
-
-    const updatedUser = await User.findByIdAndUpdate(
-      req.params.studentId,
-      {
-        name,
-        phone,
-        dob: dob ? new Date(dob) : null,
-        address
-      },
-      { new: true }
-    ).select("-password");
-
-    res.json(updatedUser);
+    const records = await Attendance.find({ studentId: req.params.studentId }).sort({ date: -1 });
+    res.json(records);
   } catch (err) {
-    console.error("❌ Profile update error:", err);
-    res.status(500).json({ message: "Profile update failed" });
+    res.status(500).json({ message: "Error fetching attendance" });
   }
 });
 
+/* =========================================
+   7. GET PROFILE (Settings)
+========================================= */
+router.get("/profile/:id", async (req, res) => {
+  try {
+    const student = await User.findById(req.params.id).select("-password");
+    if (!student) return res.status(404).json({ message: "Student not found" });
+    res.json(student);
+  } catch (err) {
+    res.status(500).json({ message: "Server Error" });
+  }
+});
 
-/* =======================
-   CHANGE PASSWORD
-======================= */
-router.put("/change-password/:studentId", async (req, res) => {
+/* =========================================
+   8. UPDATE PROFILE
+========================================= */
+router.put("/update-profile/:id", async (req, res) => {
+  try {
+    const { email, phone, address } = req.body;
+    await User.findByIdAndUpdate(req.params.id, { email, phone, address });
+    res.json({ success: true, message: "Profile updated successfully!" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error updating profile" });
+  }
+});
+
+/* =========================================
+   9. CHANGE PASSWORD (Student Settings)
+========================================= */
+router.put("/change-password/:id", async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body;
-
-    const user = await User.findById(req.params.studentId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
     const isMatch = await bcrypt.compare(oldPassword, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Old password incorrect" });
-    }
+    if (!isMatch) return res.status(400).json({ success: false, message: "Incorrect current password" });
 
     user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
 
-    res.json({ message: "Password updated successfully" });
+    res.json({ success: true, message: "Password changed successfully!" });
   } catch (err) {
-    res.status(500).json({ message: "Password update failed" });
+    res.status(500).json({ success: false, message: "Error changing password" });
   }
 });
-// =======================
-// GET STUDENT PROFILE (DB)
-// =======================
-router.get("/profile/:studentId", async (req, res) => {
+
+/* =========================================
+   10. GET NOTIFICATIONS (Auto-Refresh)
+========================================= */
+router.get("/notifications/:studentId", async (req, res) => {
   try {
-    const user = await User.findById(req.params.studentId).select("-password");
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    res.json(user);
+    const student = await User.findById(req.params.studentId);
+    if (!student) return res.status(404).json({ count: 0, latest: [] });
+
+    // Find materials not viewed by student
+    const unreadMaterials = await Material.find({
+      course: student.course,
+      viewedBy: { $ne: student._id }
+    })
+    .sort({ uploadDate: -1 })
+    .limit(5);
+
+    // ✅ NO CONSOLE LOGS HERE
+    res.json({
+      count: unreadMaterials.length,
+      notifications: unreadMaterials.map(m => ({
+        id: m._id,
+        text: `New material: ${m.title}`,
+        time: new Date(m.uploadDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        subject: m.subject
+      }))
+    });
+
   } catch (err) {
-    res.status(500).json({ message: "Failed to fetch user profile" });
+    console.error("Notification Error:", err);
+    res.status(500).json({ count: 0, latest: [] });
   }
 });
 

@@ -1,299 +1,99 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react"; // ✅ Import useCallback
 
 const NotificationBell = ({ studentId }) => {
-  // ALL HOOKS MUST BE DECLARED FIRST - BEFORE ANY CONDITIONAL RETURNS
+  const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const dropdownRef = useRef(null);
 
-  // Debug: Log when component mounts and receives studentId
-  useEffect(() => {
-    console.log("🔔 NotificationBell mounted with studentId:", studentId);
-  }, [studentId]);
-
-  // Fetch unread count
-  const fetchUnreadCount = useCallback(async () => {
-    if (!studentId) {
-      console.log("⚠️ No studentId - skipping fetchUnreadCount");
-      return;
-    }
-    
-    try {
-      const response = await fetch(`http://localhost:5000/api/student/notifications/${studentId}/unread-count`);
-      const data = await response.json();
-      console.log("📊 Unread count fetched:", data.count);
-      setUnreadCount(data.count || 0);
-    } catch (error) {
-      console.error("❌ Error fetching unread count:", error);
-    }
-  }, [studentId]);
-
-  // Fetch all notifications
+  // ✅ FIX: Wrap function in useCallback so it doesn't get re-created on every render
   const fetchNotifications = useCallback(async () => {
-    if (!studentId) {
-      console.log("⚠️ No studentId - skipping fetchNotifications");
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      console.log("📥 Fetching notifications for student:", studentId);
-      const response = await fetch(`http://localhost:5000/api/student/notifications/${studentId}`);
-      const data = await response.json();
-      console.log("📦 Received notifications:", data);
-      setNotifications(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("❌ Error fetching notifications:", error);
-      setNotifications([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [studentId]);
-
-  // Mark notification as read
-  const markAsRead = useCallback(async (notificationId) => {
     if (!studentId) return;
-    
     try {
-      await fetch(`http://localhost:5000/api/student/notifications/${notificationId}/read`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentId })
-      });
-      
-      // Update local state
-      setNotifications(prev => prev.map(notif => 
-        notif._id === notificationId ? { ...notif, read: true } : notif
-      ));
-      
-      fetchUnreadCount();
-    } catch (error) {
-      console.error("❌ Error marking as read:", error);
-    }
-  }, [studentId, fetchUnreadCount]);
-
-  // Mark all as read
-  const markAllAsRead = useCallback(async () => {
-    if (!studentId) return;
-    
-    try {
-      await fetch(`http://localhost:5000/api/student/notifications/read-all`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentId })
-      });
-      
-      setNotifications(prev => prev.map(notif => ({ ...notif, read: true })));
-      setUnreadCount(0);
-    } catch (error) {
-      console.error("❌ Error marking all as read:", error);
-    }
-  }, [studentId]);
-
-  // Toggle dropdown
-  const toggleDropdown = () => {
-    console.log("🔄 Toggle dropdown, current state:", showDropdown);
-    setShowDropdown(!showDropdown);
-    if (!showDropdown) {
-      fetchNotifications();
-    }
-  };
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setShowDropdown(false);
+      const res = await fetch(`http://localhost:5000/api/student/notifications/${studentId}`);
+      const data = await res.json();
+      if (res.ok) {
+        setUnreadCount(data.count);
+        setNotifications(data.notifications || []);
       }
-    };
+    } catch (error) {
+      console.error("Notification error:", error);
+    }
+  }, [studentId]); // ✅ Only re-create if studentId changes
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // Fetch unread count on mount and every 30 seconds
+  // ✅ AUTO-REFRESH LOGIC
   useEffect(() => {
-    if (!studentId) {
-      console.log("⚠️ No studentId available for polling");
-      return;
-    }
-    
-    console.log("⏰ Setting up unread count polling");
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 5000);
-    return () => clearInterval(interval);
-  }, [studentId, fetchUnreadCount]);
+    fetchNotifications(); // 1. Fetch immediately on load
 
-  // Get icon based on notification type
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case 'material':
-        return '📚';
-      case 'attendance':
-        return '📅';
-      case 'notice':
-        return '📢';
-      default:
-        return '🔔';
-    }
-  };
+    const interval = setInterval(() => {
+      fetchNotifications(); // 2. Fetch every 5 seconds
+    }, 5000);
 
-  // Get relative time
-  const getRelativeTime = (date) => {
-    const now = new Date();
-    const notifDate = new Date(date);
-    const diffMs = now - notifDate;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return notifDate.toLocaleDateString();
-  };
-
-  // ✅ GUARD CLAUSE AFTER ALL HOOKS - This is the correct pattern
-  if (!studentId) {
-    console.warn("⚠️ NotificationBell: No studentId provided - returning null");
-    return null;
-  }
-
-  console.log("✅ NotificationBell: Rendering successfully with studentId:", studentId);
+    return () => clearInterval(interval); // 3. Cleanup on unmount
+  }, [fetchNotifications]); // ✅ Added 'fetchNotifications' to dependency array
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      {/* Bell Icon */}
-      <button
-        onClick={toggleDropdown}
-        className="relative p-2 rounded-full hover:bg-red-800 transition-colors"
-        title="Notifications"
+    <div className="relative">
+      {/* 🔔 BELL ICON */}
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="relative p-2 rounded-xl transition-all duration-300 
+                   text-gray-600 hover:bg-rose-50 hover:text-rose-600 
+                   dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
       >
-        <svg
-          className="w-6 h-6 text-white"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" 
+          fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-          />
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
         </svg>
-        
-        {/* Unread Badge */}
+
+        {/* DYNAMIC RED DOT */}
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-yellow-500 rounded-full">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
+          <span className="absolute top-1.5 right-2 w-2.5 h-2.5 bg-rose-600 rounded-full border-2 border-white dark:border-gray-900 animate-pulse"></span>
         )}
       </button>
 
-      {/* Dropdown */}
-      {showDropdown && (
-        <div className="absolute right-0 mt-2 w-96 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 max-h-[32rem] overflow-hidden flex flex-col">
-          {/* Header */}
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-            <h3 className="text-lg font-bold text-gray-800 dark:text-white">
-              Notifications
-            </h3>
-            {unreadCount > 0 && (
-              <button
-                onClick={markAllAsRead}
-                className="text-xs text-red-600 hover:text-red-700 font-semibold"
-              >
-                Mark all as read
-              </button>
-            )}
-          </div>
+      {/* 📂 DROPDOWN MENU */}
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>
 
-          {/* Notifications List */}
-          <div className="overflow-y-auto flex-1">
-            {loading ? (
-              <div className="p-8 text-center text-gray-500">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
-                <p className="mt-2 text-sm">Loading...</p>
-              </div>
-            ) : notifications.length === 0 ? (
-              <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-                <div className="text-5xl mb-3">🔔</div>
-                <p className="text-sm font-medium">No notifications yet</p>
-                <p className="text-xs mt-1">You'll be notified about materials, attendance, and notices</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                {notifications.map((notif) => (
-                  <div
-                    key={notif._id}
-                    onClick={() => !notif.read && markAsRead(notif._id)}
-                    className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer ${
-                      !notif.read ? 'bg-red-50 dark:bg-red-900/10' : ''
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      {/* Icon */}
-                      <div className="text-2xl flex-shrink-0">
-                        {getNotificationIcon(notif.type)}
-                      </div>
-                      
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <h4 className="text-sm font-bold text-gray-800 dark:text-white">
-                            {notif.title}
-                          </h4>
-                          {!notif.read && (
-                            <span className="w-2 h-2 bg-red-600 rounded-full flex-shrink-0 mt-1"></span>
-                          )}
-                        </div>
-                        
-                        <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                          {notif.message}
-                        </p>
-                        
-                        {notif.subject && (
-                          <span className="inline-block mt-2 px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs font-semibold rounded">
-                            {notif.subject}
-                          </span>
-                        )}
-                        
-                        <div className="flex items-center gap-2 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                          <span>{getRelativeTime(notif.createdAt)}</span>
-                          {notif.createdBy && (
-                            <>
-                              <span>•</span>
-                              <span>{notif.createdBy}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Footer */}
-          {notifications.length > 0 && (
-            <div className="p-3 border-t border-gray-200 dark:border-gray-700 text-center">
-              <button
-                onClick={() => {
-                  setShowDropdown(false);
-                }}
-                className="text-sm text-red-600 hover:text-red-700 font-semibold"
-              >
-                View All Notifications
-              </button>
+          <div className="absolute right-0 mt-4 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
+            <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50">
+              <h3 className="font-bold text-gray-800 dark:text-white text-sm">Notifications</h3>
+              {unreadCount > 0 ? (
+                <span className="text-[10px] font-bold bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full">{unreadCount} New</span>
+              ) : (
+                <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">All caught up</span>
+              )}
             </div>
-          )}
-        </div>
+            
+            <div className="max-h-64 overflow-y-auto custom-scrollbar">
+              {notifications.length > 0 ? (
+                notifications.map((n) => (
+                  <div key={n.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 border-b border-gray-50 dark:border-gray-700/50 transition-colors cursor-pointer group">
+                    <div className="flex justify-between items-start">
+                      <p className="text-sm text-gray-700 dark:text-gray-200 font-bold group-hover:text-rose-600 transition-colors">{n.subject}</p>
+                      <span className="text-[10px] text-gray-400">{n.time}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{n.text}</p>
+                  </div>
+                ))
+              ) : (
+                <div className="p-8 text-center text-gray-400 text-xs font-bold">
+                  No new notifications.
+                </div>
+              )}
+            </div>
+            
+            {unreadCount > 0 && (
+               <div className="p-3 bg-gray-50 dark:bg-gray-700/30 text-center">
+                 <button className="text-xs font-bold text-rose-600 hover:text-rose-700 transition-colors">View All Materials</button>
+               </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

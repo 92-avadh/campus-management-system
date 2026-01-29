@@ -4,53 +4,75 @@ const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 const User = require("../models/User");
 
-// Transporter for Email
+// ✅ EMAIL TRANSPORTER SETUP
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: process.env.EMAIL_USER, // Your Admin Email
+    pass: process.env.EMAIL_PASS, // Your App Password
   },
 });
 
-// --- STEP 1: VERIFY CREDENTIALS & SEND OTP ---
+/* =========================================
+   1. LOGIN STEP 1: VERIFY CREDENTIALS & SEND OTP
+========================================= */
 router.post("/login-step1", async (req, res) => {
   try {
     const { userId, password, role } = req.body;
     
+    // 1. Check User Existence & Role
     const user = await User.findOne({ userId });
     if (!user) return res.status(400).json({ message: "Invalid User ID" });
     if (user.role !== role) return res.status(400).json({ message: "Role mismatch" });
 
+    // 2. Verify Password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid Password" });
 
+    // 3. Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    
     user.otp = otp;
-    user.otpExpires = Date.now() + 5 * 60 * 1000; // 5 mins
+    user.otpExpires = Date.now() + 5 * 60 * 1000; // Expires in 5 mins
     await user.save();
 
-    console.log(`🚀 FAST OTP for ${user.email}: ${otp}`);
-
-    /* // Enable for Real Email
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+    // 4. Send Professional OTP Email
+    const mailOptions = {
+      from: '"ST College Security" <no-reply@stcollege.edu>',
       to: user.email,
-      subject: "Your Login OTP",
-      text: `Your OTP is: ${otp}`
-    });
-    */
+      subject: "🔐 Login Verification Code - ST College",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #be123c; padding: 20px; text-align: center; color: white;">
+            <h2 style="margin: 0;">ST College Portal</h2>
+          </div>
+          <div style="padding: 30px; background-color: #ffffff; text-align: center;">
+            <p style="color: #555; font-size: 16px;">Hello <strong>${user.name}</strong>,</p>
+            <p style="color: #555;">Use the code below to complete your secure login.</p>
+            
+            <div style="background-color: #f8fafc; border: 1px dashed #be123c; padding: 15px; margin: 20px 0; border-radius: 8px;">
+              <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #be123c;">${otp}</span>
+            </div>
+            
+            <p style="font-size: 12px; color: #888;">This code expires in 5 minutes. If you did not request this, please secure your account immediately.</p>
+          </div>
+        </div>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+    // console.log(`📧 OTP Sent to ${user.email}`); // Un-comment for debugging if needed
 
     res.json({ message: "OTP Sent", email: user.email }); 
 
   } catch (error) {
-    console.error(error);
+    console.error("Login Error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 });
 
-// --- STEP 2: VERIFY OTP & LOGIN ---
+/* =========================================
+   2. LOGIN STEP 2: VERIFY OTP
+========================================= */
 router.post("/login-step2", async (req, res) => {
   try {
     const { userId, otp } = req.body;
@@ -58,9 +80,11 @@ router.post("/login-step2", async (req, res) => {
     const user = await User.findOne({ userId });
     if (!user) return res.status(400).json({ message: "User not found" });
 
+    // Verify OTP Match & Expiry
     if (user.otp !== otp) return res.status(400).json({ message: "Invalid OTP" });
     if (Date.now() > user.otpExpires) return res.status(400).json({ message: "OTP Expired" });
 
+    // Clear OTP after success
     user.otp = undefined;
     user.otpExpires = undefined;
     await user.save();
@@ -75,7 +99,7 @@ router.post("/login-step2", async (req, res) => {
         department: user.department,
         userId: user.userId,
         isFeePaid: user.isFeePaid,
-        course: user.course // Added course for student context
+        course: user.course
       }
     });
 
@@ -84,7 +108,9 @@ router.post("/login-step2", async (req, res) => {
   }
 });
 
-// --- NEW: CHANGE PASSWORD ---
+/* =========================================
+   3. CHANGE PASSWORD (General)
+========================================= */
 router.post("/change-password", async (req, res) => {
   try {
     const { userId, oldPassword, newPassword } = req.body;
@@ -104,7 +130,9 @@ router.post("/change-password", async (req, res) => {
   }
 });
 
-// --- NEW: CONTACT ADMIN ---
+/* =========================================
+   4. CONTACT ADMIN
+========================================= */
 router.post("/contact-admin", async (req, res) => {
   try {
     const { userId, subject, message } = req.body;
@@ -114,9 +142,9 @@ router.post("/contact-admin", async (req, res) => {
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: process.env.EMAIL_USER, // Sends email to Admin (Self)
-      subject: `[SUPPORT] ${subject} - from ${user.name} (${user.role.toUpperCase()})`,
-      text: `User Details:\nName: ${user.name}\nID: ${user.userId}\nRole: ${user.role}\n\nMessage:\n${message}`
+      to: process.env.EMAIL_USER, // Admin receives this
+      subject: `[SUPPORT] ${subject} - from ${user.name}`,
+      text: `User: ${user.name} (${user.userId})\nRole: ${user.role}\n\nMessage:\n${message}`
     };
 
     await transporter.sendMail(mailOptions);
