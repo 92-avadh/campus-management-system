@@ -34,7 +34,7 @@ router.post("/login-step1", async (req, res) => {
     user.otp = otp;
     user.otpExpires = Date.now() + 5 * 60 * 1000; // Expires in 5 mins
     await user.save();
-
+    console.log(`🚀 DEBUG OTP for ${user.email}: ${otp}`);
     // 4. Send Professional OTP Email
     const mailOptions = {
       from: '"ST College Security" <no-reply@stcollege.edu>',

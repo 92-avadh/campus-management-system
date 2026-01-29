@@ -20,7 +20,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// ✅ MULTER STORAGE (File Uploads)
+// ✅ MULTER STORAGE
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "uploads/"),
   filename: (req, file, cb) =>
@@ -29,40 +29,68 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 /* =========================================
-   1. APPLY FOR ADMISSION (With Email)
+   1. APPLY FOR ADMISSION (Duplicate Check)
 ========================================= */
 router.post(
   "/apply",
   upload.fields([{ name: "photo" }, { name: "marksheet" }]),
   async (req, res) => {
     try {
-      const exists = await User.findOne({ email: req.body.email });
-      if (exists) return res.status(400).json({ message: "Already enrolled" });
+      const { email, name, phone, course, address } = req.body;
 
-      await new Application(req.body).save();
+      // 1. Check if user is ALREADY A STUDENT (Enrolled)
+      const existingStudent = await User.findOne({ email });
+      if (existingStudent) {
+        return res.status(400).json({ message: "You are already enrolled as a student." });
+      }
 
-      // Professional Acknowledgement Email
-      const mailOptions = {
-        from: '"ST College Admissions" <admissions@stcollege.edu>',
-        to: req.body.email,
+      // 2. ✅ NEW: Check if application is PENDING
+      // If found, they cannot re-apply. If rejected (and deleted), this will be null, so they CAN re-apply.
+      const pendingApp = await Application.findOne({ email });
+      if (pendingApp) {
+        return res.status(400).json({ message: "Application already submitted! Please wait for admin review." });
+      }
+
+      // 3. Save New Application
+      const newApp = new Application(req.body);
+      if (req.files['photo']) newApp.photo = req.files['photo'][0].path;
+      if (req.files['marksheet']) newApp.marksheet = req.files['marksheet'][0].path;
+      await newApp.save();
+
+      // 4. Attachments for Admin Email
+      const attachments = [];
+      if (req.files['photo']) attachments.push({ filename: 'Photo.jpg', path: req.files['photo'][0].path });
+      if (req.files['marksheet']) attachments.push({ filename: 'Marksheet.pdf', path: req.files['marksheet'][0].path });
+
+      // 5. Notify Admin
+      const adminMailOptions = {
+        from: `"ST College System" <${process.env.EMAIL_USER}>`,
+        to: process.env.EMAIL_USER,
+        subject: `📄 New Admission Application: ${name}`,
+        html: `
+          <h3>New Application Received</h3>
+          <p><strong>Name:</strong> ${name}</p>
+          <p><strong>Course:</strong> ${course}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p>Please review the attached documents.</p>
+        `,
+        attachments
+      };
+      
+      // 6. Acknowledge Student
+      const studentMailOptions = {
+        from: `"ST College Admissions" <${process.env.EMAIL_USER}>`,
+        to: email,
         subject: "🎓 Application Received - ST College",
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 8px;">
-            <div style="background-color: #1e293b; padding: 20px; text-align: center; color: white;">
-              <h2>ST College Admissions</h2>
-            </div>
-            <div style="padding: 20px;">
-              <p>Dear <strong>${req.body.name}</strong>,</p>
-              <p>We have successfully received your application for the <strong>${req.body.course}</strong> program.</p>
-              <p>Our team will review your documents shortly.</p>
-              <p>Reference No: <strong>APP-${Date.now()}</strong></p>
-              <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-              <p style="font-size: 12px; color: #888; text-align: center;">ST College, Surat - Admission Cell</p>
-            </div>
-          </div>
+          <p>Dear <strong>${name}</strong>,</p>
+          <p>We have received your application for <strong>${course}</strong>.</p>
+          <p>Our team will review it shortly. You will receive an update via email.</p>
         `
       };
-      await transporter.sendMail(mailOptions);
+
+      await transporter.sendMail(adminMailOptions);
+      await transporter.sendMail(studentMailOptions);
 
       res.json({ message: "Application submitted successfully! Check your email." });
     } catch (err) {
@@ -71,6 +99,9 @@ router.post(
     }
   }
 );
+
+// ... (Rest of existing student routes like /materials, /mark-attendance remain here)
+// Make sure to keep your existing routes below this point.
 
 /* =========================================
    2. GET MATERIALS

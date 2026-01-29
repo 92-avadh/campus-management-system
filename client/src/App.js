@@ -1,12 +1,22 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from "react-router-dom";
+
+// Components
+import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
+import ScrollToTop from "./components/ScrollToTop"; // ✅ 1. Import ScrollToTop
 
 // Pages
+import Home from "./pages/Home";
 import Login from "./pages/Login";
-import StudentDashboard from "./pages/StudentDashboard"; // ✅ Includes its own Sidebar
-import FacultyDashboard from "./pages/FacultyDashboard"; // ✅ Includes its own Sidebar
+import About from "./pages/About";
+import Contact from "./pages/Contact";
+import Courses from "./pages/Courses";
+import Campus from "./pages/Campus";
+import StudentDashboard from "./pages/StudentDashboard";
+import FacultyDashboard from "./pages/FacultyDashboard";
 
-// Simple Auth Check (Optional wrapper)
+// --- PRIVATE ROUTE WRAPPER ---
 const PrivateRoute = ({ children, role }) => {
   const user = JSON.parse(sessionStorage.getItem("currentUser"));
   if (!user) return <Navigate to="/login" />;
@@ -14,17 +24,38 @@ const PrivateRoute = ({ children, role }) => {
   return children;
 };
 
+// --- MAIN LAYOUT (Header & Footer) ---
+const MainLayout = () => {
+  return (
+    <div className="flex flex-col min-h-screen">
+      <Navbar />
+      <main className="flex-1">
+        <Outlet />
+      </main>
+      <Footer />
+    </div>
+  );
+};
+
 function App() {
   return (
     <Router>
-      <Routes>
-        {/* Login Page (No Sidebar) */}
-        <Route path="/login" element={<Login />} />
-        
-        {/* Default Redirect */}
-        <Route path="/" element={<Navigate to="/login" />} />
+      {/* ✅ 2. Add ScrollToTop here (Inside Router, outside Routes) */}
+      <ScrollToTop /> 
 
-        {/* Student Dashboard (Has its own Sidebar inside) */}
+      <Routes>
+        
+        {/* PUBLIC PAGES (With Header/Footer) */}
+        <Route element={<MainLayout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/courses" element={<Courses />} />
+          <Route path="/campus" element={<Campus />} />
+        </Route>
+
+        {/* STUDENT DASHBOARD (No Main Header) */}
         <Route 
           path="/student-dashboard" 
           element={
@@ -34,7 +65,7 @@ function App() {
           } 
         />
 
-        {/* Faculty Dashboard (Has its own Sidebar inside) */}
+        {/* FACULTY DASHBOARD (No Main Header) */}
         <Route 
           path="/faculty-dashboard" 
           element={
@@ -45,7 +76,8 @@ function App() {
         />
         
         {/* Catch all */}
-        <Route path="*" element={<Navigate to="/login" />} />
+        <Route path="*" element={<Navigate to="/" />} />
+
       </Routes>
     </Router>
   );

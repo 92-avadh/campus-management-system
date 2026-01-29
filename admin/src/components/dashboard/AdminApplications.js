@@ -4,53 +4,136 @@ const AdminApplications = () => {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Fetch pending applications
   const fetchApplications = async () => {
     try {
       const res = await fetch("http://localhost:5000/api/admin/applications");
       const data = await res.json();
       setApplications(data);
-    } catch (err) { console.error("Fetch error:", err); } finally { setLoading(false); }
+    } catch (err) { 
+      console.error("Fetch error:", err); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   useEffect(() => { fetchApplications(); }, []);
 
+  // Handle Approve/Reject
   const handleAction = async (id, status) => {
-    if(!window.confirm(`Are you sure you want to ${status} this application?`)) return;
+    let reason = "";
+
+    // ✅ If Rejecting, Ask for Reason
+    if (status === 'rejected') {
+      reason = prompt("Please enter the reason for rejection:");
+      if (reason === null) return; // Cancelled
+      if (reason.trim() === "") {
+        alert("Rejection reason is required!");
+        return;
+      }
+    } else {
+      if(!window.confirm(`Are you sure you want to approve this student?`)) return;
+    }
+
+    // Determine endpoint based on status
+    const endpoint = status === 'approved' ? 'approve' : 'reject';
+
     try {
-      await fetch(`http://localhost:5000/api/admin/application/${id}`, {
+      const res = await fetch(`http://localhost:5000/api/admin/${endpoint}/${id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status })
+        // ✅ Send reason in body (only used for rejection)
+        body: JSON.stringify({ reason }) 
       });
-      fetchApplications();
-    } catch (err) { alert("Action failed"); }
+      
+      const data = await res.json();
+      alert(data.message || "Action Successful");
+      fetchApplications(); // Refresh list
+    } catch (err) { 
+      alert("Action failed"); 
+    }
   };
 
-  if (loading) return <div className="p-12 text-center text-gray-500 dark:text-gray-400 font-bold">Loading Applications...</div>;
+  if (loading) return <div className="p-12 text-center text-gray-500 font-bold">Loading Applications...</div>;
 
   return (
     <div className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] shadow-2xl border dark:border-gray-700 animate-in fade-in">
       <h2 className="text-2xl font-black text-gray-800 dark:text-white mb-8">Pending Admissions</h2>
+      
       {applications.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 dark:bg-gray-900/50 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-700">
-           <p className="text-gray-500 dark:text-gray-400 font-bold">No pending applications found.</p>
+           <p className="text-gray-500 font-bold">No pending applications found.</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {applications.map((app) => (
-            <div key={app._id} className="flex flex-col md:flex-row justify-between items-center p-6 bg-gray-50 dark:bg-gray-700/30 rounded-3xl border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-all">
-              <div className="mb-4 md:mb-0">
-                <h4 className="font-bold text-xl text-gray-800 dark:text-white">{app.name}</h4>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{app.email} • {app.phone}</p>
-                <div className="flex gap-2 mt-2">
-                   <span className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 text-xs px-3 py-1 rounded-full font-bold">{app.course}</span>
-                   <span className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 text-xs px-3 py-1 rounded-full font-bold">Top {app.percentile}%</span>
+            <div key={app._id} className="flex flex-col lg:flex-row gap-6 p-6 bg-gray-50 dark:bg-gray-700/30 rounded-3xl border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-all">
+              
+              {/* --- 1. APPLICANT PHOTO --- */}
+              <div className="flex-shrink-0">
+                {app.photo ? (
+                  <img 
+                    src={`http://localhost:5000/${app.photo.replace(/\\/g, "/")}`} 
+                    alt={app.name} 
+                    className="w-24 h-24 rounded-2xl object-cover border-2 border-white shadow-md"
+                    onError={(e) => {e.target.onerror = null; e.target.src="https://via.placeholder.com/150"}}
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-2xl bg-gray-200 flex items-center justify-center text-2xl">👤</div>
+                )}
+              </div>
+
+              {/* --- 2. MAIN DETAILS --- */}
+              <div className="flex-1">
+                <div className="flex justify-between items-start mb-2">
+                  <h4 className="font-bold text-xl text-gray-900 dark:text-white">{app.name}</h4>
+                  <span className="bg-rose-100 text-rose-700 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+                    {app.course}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-y-1 gap-x-4 text-sm text-gray-600 dark:text-gray-300 mb-3">
+                  <p>📧 {app.email}</p>
+                  <p>📞 {app.phone}</p>
+                  <p>🎂 {app.dob} ({app.gender})</p>
+                  <p>📊 12th Score: <span className="font-bold text-emerald-600">{app.percentage}%</span></p>
+                </div>
+
+                <p className="text-xs text-gray-500 mb-4 bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-600">
+                  📍 {app.address}
+                </p>
+
+                {/* --- 3. ACTIONS & FILES --- */}
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Marksheet Link */}
+                  {app.marksheet && (
+                    <a 
+                      href={`http://localhost:5000/${app.marksheet.replace(/\\/g, "/")}`} 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1 bg-blue-50 px-3 py-2 rounded-lg"
+                    >
+                      📄 View Marksheet
+                    </a>
+                  )}
+
+                  <div className="flex-1"></div> {/* Spacer */}
+
+                  <button 
+                    onClick={() => handleAction(app._id, "approved")} 
+                    className="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-md transition active:scale-95 text-sm"
+                  >
+                    Approve
+                  </button>
+                  <button 
+                    onClick={() => handleAction(app._id, "rejected")} 
+                    className="px-5 py-2 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-xl shadow-md transition active:scale-95 text-sm"
+                  >
+                    Reject
+                  </button>
                 </div>
               </div>
-              <div className="flex gap-3">
-                <button onClick={() => handleAction(app._id, "approved")} className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-lg transition active:scale-95">Approve</button>
-                <button onClick={() => handleAction(app._id, "rejected")} className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl shadow-lg transition active:scale-95">Reject</button>
-              </div>
+
             </div>
           ))}
         </div>
