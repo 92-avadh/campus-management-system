@@ -103,8 +103,8 @@ router.get("/students", async (req, res) => {
     const students = await User.find({
       role: "student",
       $or: [
-        { department: { $regex: new RegExp(`^${department}$`, "i") } },
-        { course: { $regex: new RegExp(`^${department}$`, "i") } }
+        { department: { $regex: department, $options: "i" } },
+        { course: { $regex: department, $options: "i" } }
       ]
     }).select("-password");
 

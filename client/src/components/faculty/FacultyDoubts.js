@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { FaSearch, FaCheckCircle, FaReply, FaClock } from "react-icons/fa";
+import React, { useState, useEffect, useCallback } from "react";
+import { FaCheckCircle, FaReply } from "react-icons/fa";
 
 const FacultyDoubts = () => {
   const [doubts, setDoubts] = useState([]);
@@ -9,13 +9,16 @@ const FacultyDoubts = () => {
 
   // Get Current Faculty ID
   const user = JSON.parse(sessionStorage.getItem("currentUser"));
-  const facultyId = user ? user.id : null;
+  const facultyId = user ? (user._id || user.id) : null;
 
   // 1. Fetch Doubts
-  const fetchDoubts = async () => {
+  const fetchDoubts = useCallback(async () => {
     if (!facultyId) return;
+  
     try {
-      const res = await fetch(`http://localhost:5000/api/faculty/doubts/${facultyId}`);
+      const res = await fetch(
+        `http://localhost:5000/api/faculty/doubts/${facultyId}`
+      );
       const data = await res.json();
       setDoubts(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -23,11 +26,12 @@ const FacultyDoubts = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [facultyId]);
+  
 
   useEffect(() => {
     fetchDoubts();
-  }, [facultyId]);
+  }, [fetchDoubts]);  
 
   // 2. Submit Answer
   const handleSubmitAnswer = async (id) => {
