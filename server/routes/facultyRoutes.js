@@ -7,8 +7,10 @@ const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const Material = require("../models/Material");
 const Course = require("../models/Course");
-const Notification = require("../models/Notification");
+const Notification = require("../models/Notification"); // ✅ Ensure this is imported
 const Query = require("../models/Query");
+const Notice = require("../models/Notice");
+
 /* =======================
    MULTER CONFIG
 ======================= */
@@ -27,25 +29,85 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({ storage, fileFilter });
 
 /* =======================
-   GET STUDENTS (✅ FIXED LOGIC)
+   ✅ NOTICE OPERATIONS (FIXED)
+======================= */
+
+// 1. ADD NOTICE & NOTIFY STUDENTS
+router.post("/add-notice", async (req, res) => {
+  try {
+    // ✅ Extract 'userId' from request
+    const { title, content, target, postedBy, userId } = req.body;
+    
+    if (!title || !content || !postedBy || !userId) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // 1. Create the Notice (uses 'postedBy' String)
+    const newNotice = new Notice({
+      title,
+      content,
+      target: target || "student", 
+      postedBy
+    });
+
+    const savedNotice = await newNotice.save();
+
+    // 2. Create Notification (uses 'userId' ObjectId)
+    await Notification.create({
+      type: "notice",
+      title: "New Notice Posted",
+      message: title, 
+      course: "ALL",  
+      relatedId: savedNotice._id,
+      relatedModel: "Notice",
+      createdBy: userId, // ✅ FIX: Must be an ObjectId, not a name string
+      createdAt: new Date()
+    });
+
+    res.json({ success: true, message: "Notice Posted & Students Notified!" });
+
+  } catch (err) {
+    console.error("Notice Error:", err);
+    res.status(500).json({ message: "Failed to post notice" });
+  }
+});
+
+// 2. GET FACULTY NOTICES
+router.get("/notices", async (req, res) => {
+  try {
+    const notices = await Notice.find().sort({ date: -1 });
+    res.json(notices);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching notices" });
+  }
+});
+
+// 3. DELETE NOTICE
+router.delete("/delete-notice/:id", async (req, res) => {
+  try {
+    await Notice.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: "Notice deleted" });
+  } catch (err) {
+    res.status(500).json({ message: "Error deleting notice" });
+  }
+});
+
+/* =======================
+   GET STUDENTS
 ======================= */
 router.get("/students", async (req, res) => {
   try {
     const { department } = req.query;
-    
-    console.log(`👨‍🏫 Fetching students for Dept: ${department}`); // DEBUG LOG
+    console.log(`👨‍🏫 Fetching students for Dept: ${department}`); 
 
-    // Logic: Find students where their 'course' OR 'department' matches the Faculty's department
-    // We REMOVED 'isFeePaid: true' so ALL students show up.
     const students = await User.find({
       role: "student",
       $or: [
-        { department: { $regex: new RegExp(`^${department}$`, "i") } }, // Case-insensitive match
+        { department: { $regex: new RegExp(`^${department}$`, "i") } },
         { course: { $regex: new RegExp(`^${department}$`, "i") } }
       ]
-    }).select("-password"); // Security: Don't send passwords
+    }).select("-password");
 
-    console.log(`✅ Found ${students.length} students.`); // DEBUG LOG
     res.json(students);
   } catch (err) {
     console.error("Error fetching students:", err);
@@ -182,13 +244,14 @@ router.put("/change-password/:id", async (req, res) => {
     res.json({ success: true, message: "Password changed!" });
   } catch (err) { res.status(500).json({ success: false, message: "Error" }); }
 });
+
 /* =======================
    GET PENDING DOUBTS
 ======================= */
 router.get("/doubts/:facultyId", async (req, res) => {
   try {
     const doubts = await Query.find({ faculty: req.params.facultyId })
-      .sort({ status: 1, createdAt: -1 }); // Pending first, then new ones
+      .sort({ status: 1, createdAt: -1 }); 
     res.json(doubts);
   } catch (err) {
     res.status(500).json({ message: "Error fetching doubts" });

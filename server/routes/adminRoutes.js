@@ -1,167 +1,215 @@
 const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcryptjs");
-const nodemailer = require("nodemailer");
 const User = require("../models/User");
+const Notice = require("../models/Notice"); // ✅ Import Notice
+const Notification = require("../models/Notification"); // ✅ Import Notification
 const Application = require("../models/Application");
-const Notice = require("../models/Notice");
+const Course = require("../models/Course"); // For dashboard stats
 
-// --- 📧 EMAIL HELPERS ---
-const sendApprovalEmail = async (email, name, userId, password, course) => {
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-  });
-  const mailOptions = {
-    from: `"SDJIC Admissions" <${process.env.EMAIL_USER}>`,
-    to: email,
-    subject: `Congratulations! Your Admission to SDJIC is Approved`,
-    text: `Dear ${name},\n\nYour account details:\nUser ID: ${userId}\nTemporary Password: ${password}\n\nLogin at: http://localhost:3000/login`
-  };
-  try { await transporter.sendMail(mailOptions); } catch (err) { console.log(err); }
-};
+/* =========================================
+   1. ADMIN LOGIN (Dummy Check or DB Check)
+========================================= */
+// Note: In production, use real admin collection or User role="admin"
+router.post("/login", async (req, res) => {
+    const { username, password } = req.body;
+    // Hardcoded for demo/project simplicity
+    if (username === "admin" && password === "admin123") {
+        return res.json({ 
+            success: true, 
+            token: "admin-token-secret", 
+            user: { name: "Administrator", role: "admin" } 
+        });
+    }
+    res.status(401).json({ message: "Invalid Credentials" });
+});
 
-const sendCredentialsEmail = async (email, name, userId, password, role) => {
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-  });
-  const mailOptions = {
-    from: `"SDJIC System" <${process.env.EMAIL_USER}>`,
-    to: email,
-    subject: `Your ${role.toUpperCase()} Account Credentials`,
-    text: `Dear ${name},\n\nUser ID: ${userId}\nTemporary Password: ${password}\n\nLogin: http://localhost:3000/login`
-  };
-  try { await transporter.sendMail(mailOptions); } catch (err) { console.log(err); }
-};
+/* =========================================
+   2. DASHBOARD STATS
+========================================= */
+router.get("/stats", async (req, res) => {
+    try {
+        const students = await User.countDocuments({ role: "student" });
+        const faculty = await User.countDocuments({ role: "faculty" });
+        const applications = await Application.countDocuments({ status: "Pending" });
+        const courses = await Course.countDocuments();
 
-// --- 1. GET PENDING APPLICATIONS ---
+        res.json({ students, faculty, applications, courses });
+    } catch (err) {
+        res.status(500).json({ message: "Error fetching stats" });
+    }
+});
+
+/* =========================================
+   3. NOTICES (✅ FIX FOR CRASH)
+========================================= */
+router.post("/add-notice", async (req, res) => {
+    try {
+        const { title, content, target, postedBy } = req.body;
+
+        // 1. Create Notice
+        const newNotice = new Notice({
+            title,
+            content,
+            target,
+            postedBy: postedBy || "Admin"
+        });
+        const savedNotice = await newNotice.save();
+
+        // 2. Create Notification
+        // ⚠️ CRITICAL FIX: Do NOT pass 'createdBy' if it is just a string like "Admin".
+        // The Notification model expects an ObjectId for 'createdBy'.
+        // Leaving it undefined prevents the CastError.
+        
+        await Notification.create({
+            type: "notice",
+            title: "📢 Admin Notice: " + title,
+            message: content.substring(0, 50) + "...", // Short preview
+            course: "ALL", // Target everyone
+            relatedId: savedNotice._id,
+            relatedModel: "Notice",
+            // createdBy: ... OMIT THIS FOR ADMIN
+            createdAt: new Date()
+        });
+
+        res.json({ success: true, message: "Notice sent successfully!" });
+    } catch (err) {
+        console.error("Admin Notice Error:", err);
+        res.status(500).json({ message: "Failed to send notice" });
+    }
+});
+
+router.get("/notices", async (req, res) => {
+    try {
+        const notices = await Notice.find({ postedBy: "Admin" }).sort({ date: -1 });
+        res.json(notices);
+    } catch (err) {
+        res.status(500).json({ message: "Error fetching notices" });
+    }
+});
+
+router.delete("/delete-notice/:id", async (req, res) => {
+    try {
+        await Notice.findByIdAndDelete(req.params.id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ message: "Error deleting notice" });
+    }
+});
+
+/* =========================================
+   4. APPLICATIONS MANAGEMENT
+========================================= */
 router.get("/applications", async (req, res) => {
-  try {
-    const apps = await Application.find({ status: "pending" });
-    res.json(apps);
-  } catch (err) { res.status(500).json({ message: "Error fetching applications" }); }
+    try {
+        const apps = await Application.find().sort({ createdAt: -1 });
+        res.json(apps);
+    } catch (err) {
+        res.status(500).json({ message: "Error" });
+    }
 });
 
-// --- 2. APPROVE STUDENT ---
-router.post("/approve/:id", async (req, res) => {
-  try {
-    const app = await Application.findById(req.params.id);
-    if (!app) return res.status(404).json({ message: "Application not found" });
+router.post("/approve-application/:id", async (req, res) => {
+    try {
+        const app = await Application.findById(req.params.id);
+        if (!app) return res.status(404).json({ message: "Application not found" });
 
-    const count = await User.countDocuments({ role: "student" });
-    const newId = `${new Date().getFullYear()}${String(count + 1).padStart(3, '0')}`; 
-    const rawPassword = Math.random().toString(36).slice(-8);
-    const hashedPassword = await bcrypt.hash(rawPassword, 10);
+        // Create Student User
+        // Generate random password or use phone number
+        const password = Math.random().toString(36).slice(-8); 
+        const hashedPassword = await bcrypt.hash(password, 10);
+        
+        // Generate User ID (e.g., ST + Year + Random)
+        const userId = `ST${new Date().getFullYear()}${Math.floor(1000 + Math.random() * 9000)}`;
 
-    const newUser = new User({
-      name: app.name, 
-      email: app.email, 
-      phone: app.phone,
-      role: "student", 
-      userId: newId, 
-      password: hashedPassword,
-      course: app.course, 
-      department: app.course,
-      photo: app.photo
-    });
+        const newUser = new User({
+            name: app.name,
+            email: app.email,
+            phone: app.phone,
+            role: "student",
+            userId: userId,
+            password: hashedPassword,
+            course: app.course,
+            address: app.address,
+            photo: app.photo,
+            marksheet: app.marksheet
+        });
 
-    await newUser.save();
-    await Application.findByIdAndDelete(req.params.id);
-    await sendApprovalEmail(app.email, app.name, newId, rawPassword, app.course);
-    res.json({ message: "Student Approved and credentials emailed." });
-  } catch (err) { res.status(500).json({ message: "Error during approval" }); }
+        await newUser.save();
+        
+        // Update Application Status
+        app.status = "Approved";
+        await app.save();
+
+        // In production: Send email to student with userId & password here
+
+        res.json({ success: true, message: "Student Approved!", userId, password });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Approval failed" });
+    }
 });
 
-// --- 3. REJECT APPLICATION ---
-router.post("/reject/:id", async (req, res) => {
-  try {
-    const deletedApp = await Application.findByIdAndDelete(req.params.id);
-    if (!deletedApp) return res.status(404).json({ message: "Application not found" });
-    res.json({ message: "Application rejected and permanently removed." });
-  } catch (err) {
-    res.status(500).json({ message: "Error rejecting application" });
-  }
+router.delete("/reject-application/:id", async (req, res) => {
+    try {
+        await Application.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: "Application Rejected" });
+    } catch (err) {
+        res.status(500).json({ message: "Error" });
+    }
 });
 
-// --- 4. BROADCAST NOTICE ---
-router.post("/send-notice", async (req, res) => {
-  try {
-    const { title, content } = req.body;
-    const newNotice = new Notice({
-      title,
-      content,
-      sender: "Admin",
-      date: new Date()
-    });
-    await newNotice.save();
-    res.json({ message: "Notice broadcasted successfully to all members!" });
-  } catch (err) {
-    res.status(500).json({ message: "Error sending notice" });
-  }
+/* =========================================
+   5. USER MANAGEMENT
+========================================= */
+router.get("/users", async (req, res) => {
+    try {
+        const users = await User.find().select("-password");
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ message: "Error" });
+    }
 });
 
-// --- 5. ADD FACULTY OR ADMIN ---
-router.post("/add-user", async (req, res) => {
-  try {
-    const { name, email, phone, role, department } = req.body;
-    const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ message: "User already exists" });
-
-    const count = await User.countDocuments({ role });
-    const prefix = role === "admin" ? "ADM" : "FAC";
-    const newId = `${prefix}${new Date().getFullYear()}${String(count + 1).padStart(3, '0')}`;
-    const rawPassword = Math.random().toString(36).slice(-8);
-    const hashedPassword = await bcrypt.hash(rawPassword, 10);
-
-    const newUser = new User({ name, email, phone, role, department, userId: newId, password: hashedPassword });
-    await newUser.save();
-    await sendCredentialsEmail(email, name, newId, rawPassword, role);
-    res.json({ message: "User added and credentials emailed." });
-  } catch (err) { res.status(500).json({ message: "Error adding user" }); }
+router.delete("/delete-user/:id", async (req, res) => {
+    try {
+        await User.findByIdAndDelete(req.params.id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ message: "Error" });
+    }
 });
 
-// --- 6. GET ALL USERS & REMOVE ---
-router.get("/all-users", async (req, res) => {
-  try { res.json(await User.find({}, "-password")); } catch (err) { res.status(500).json({ message: "Error" }); }
+/* =========================================
+   6. COURSE MANAGEMENT
+========================================= */
+router.get("/courses", async (req, res) => {
+    try {
+        const courses = await Course.find();
+        res.json(courses);
+    } catch (err) {
+        res.status(500).json({ message: "Error" });
+    }
 });
 
-router.delete("/remove-user/:id", async (req, res) => {
-  try { await User.findByIdAndDelete(req.params.id); res.json({ message: "User deleted successfully" }); } catch (err) { res.status(500).json({ message: "Error" }); }
+router.post("/add-course", async (req, res) => {
+    try {
+        const { name, duration, fees, description } = req.body;
+        const newCourse = new Course({ name, duration, fees, description, subjects: [] });
+        await newCourse.save();
+        res.json({ success: true, message: "Course added" });
+    } catch (err) {
+        res.status(500).json({ message: "Error" });
+    }
 });
 
-/* =======================
-   PROFILE & SETTINGS (✅ NEW)
-======================= */
-router.get("/profile/:id", async (req, res) => {
-  try {
-    const user = await User.findById(req.params.id).select("-password");
-    if (!user) return res.status(404).json({ message: "User not found" });
-    res.json(user);
-  } catch (err) { res.status(500).json({ message: "Server Error" }); }
-});
-
-router.put("/update-profile/:id", async (req, res) => {
-  try {
-    const { email, phone, address, dob } = req.body;
-    await User.findByIdAndUpdate(req.params.id, { email, phone, address, dob });
-    res.json({ success: true, message: "Profile updated!" });
-  } catch (err) { res.status(500).json({ success: false, message: "Update failed" }); }
-});
-
-router.put("/change-password/:id", async (req, res) => {
-  try {
-    const { oldPassword, newPassword } = req.body;
-    const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
-
-    const isMatch = await bcrypt.compare(oldPassword, user.password);
-    if (!isMatch) return res.status(400).json({ success: false, message: "Incorrect current password" });
-
-    user.password = await bcrypt.hash(newPassword, 10);
-    await user.save();
-    res.json({ success: true, message: "Password changed!" });
-  } catch (err) { res.status(500).json({ success: false, message: "Error" }); }
+router.delete("/delete-course/:id", async (req, res) => {
+    try {
+        await Course.findByIdAndDelete(req.params.id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ message: "Error" });
+    }
 });
 
 module.exports = router;

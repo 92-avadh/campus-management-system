@@ -1,42 +1,69 @@
 import React, { useState, useEffect } from "react";
+import { FaBookmark, FaRegBookmark } from "react-icons/fa";
 
 const StudentNotices = () => {
   const [notices, setNotices] = useState([]);
   const [savedNotices, setSavedNotices] = useState([]);
   const [activeTab, setActiveTab] = useState("all"); // 'all' or 'saved'
+  
+  // Get Current User ID
+  const user = JSON.parse(sessionStorage.getItem("currentUser"));
+  const studentId = user ? user.id : null;
 
-  // ✅ 1. FETCH NOTICES & LOAD BOOKMARKS
-  useEffect(() => {
-    const fetchNotices = async () => {
-      try {
-        const res = await fetch("http://localhost:5000/api/student/notices");
-        const data = await res.json();
-        setNotices(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error("Error fetching notices:", err);
+  // ✅ 1. FETCH DATA (Common Function)
+  const fetchData = async () => {
+    if (!studentId) return;
+
+    try {
+      // Fetch All Public Notices
+      const noticeRes = await fetch("http://localhost:5000/api/student/notices");
+      const noticeData = await noticeRes.json();
+      setNotices(Array.isArray(noticeData) ? noticeData : []);
+
+      // Fetch User Profile (to get Bookmarks)
+      const profileRes = await fetch(`http://localhost:5000/api/student/profile/${studentId}`);
+      const profileData = await profileRes.json();
+      if (profileData.bookmarks) {
+        setSavedNotices(profileData.bookmarks);
       }
-    };
-
-    // Load bookmarks from Local Storage
-    const saved = JSON.parse(localStorage.getItem("studentBookmarks")) || [];
-    setSavedNotices(saved);
-    
-    fetchNotices();
-  }, []);
-
-  // ✅ 2. HANDLE BOOKMARK TOGGLE
-  const toggleBookmark = (notice) => {
-    let newSaved;
-    const isAlreadySaved = savedNotices.some(n => n._id === notice._id);
-
-    if (isAlreadySaved) {
-      newSaved = savedNotices.filter(n => n._id !== notice._id);
-    } else {
-      newSaved = [...savedNotices, notice];
+    } catch (err) {
+      console.error("Error fetching data:", err);
     }
+  };
 
-    setSavedNotices(newSaved);
-    localStorage.setItem("studentBookmarks", JSON.stringify(newSaved));
+  // ✅ 2. EFFECT: INITIAL FETCH + AUTO-POLLING (Every 5 Seconds)
+  useEffect(() => {
+    fetchData(); // Run immediately on mount
+
+    // Set up Auto-Refresh Interval
+    const intervalId = setInterval(() => {
+      fetchData(); 
+    }, 5000); // 5000ms = 5 Seconds
+
+    // Cleanup on Unmount (Stop polling)
+    return () => clearInterval(intervalId);
+  }, [studentId]);
+
+  // ✅ 3. HANDLE BOOKMARK TOGGLE (Server-Side)
+  const toggleBookmark = async (notice) => {
+    const originalId = notice.noticeId || notice._id; 
+
+    try {
+      const res = await fetch("http://localhost:5000/api/student/toggle-bookmark", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId, noticeId: originalId })
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        setSavedNotices(data.bookmarks); 
+      } else {
+        alert(data.message);
+      }
+    } catch (err) {
+      console.error("Bookmark Error:", err);
+    }
   };
 
   const displayList = activeTab === "all" ? notices : savedNotices;
@@ -48,7 +75,10 @@ const StudentNotices = () => {
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
         <div>
           <h2 className="text-3xl font-black text-gray-900 dark:text-white">Notice Board</h2>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">Updates from Faculty & Admin</p>
+          <div className="flex items-center gap-2">
+             <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+             <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Live Updates enabled</p>
+          </div>
         </div>
         
         {/* TABS */}
@@ -70,18 +100,20 @@ const StudentNotices = () => {
           </div>
         ) : (
           displayList.map((notice) => {
-            const isSaved = savedNotices.some(n => n._id === notice._id);
+            const currentId = notice.noticeId || notice._id;
+            const isSaved = savedNotices.some(n => n.noticeId === currentId);
+
             return (
               <div key={notice._id} className="bg-white dark:bg-gray-800 p-6 rounded-[2rem] shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all group relative overflow-hidden">
                 
                 {/* Decorative Stripe */}
-                <div className={`absolute left-0 top-0 bottom-0 w-2 ${notice.sender === "Admin" ? "bg-rose-500" : "bg-blue-500"}`}></div>
+                <div className={`absolute left-0 top-0 bottom-0 w-2 ${notice.sender === "Admin" || notice.postedBy === "Admin" ? "bg-rose-500" : "bg-blue-500"}`}></div>
 
                 <div className="flex justify-between items-start pl-4">
                   <div>
                     <div className="flex items-center gap-3 mb-2">
-                      <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${notice.sender === "Admin" ? "bg-rose-100 text-rose-700" : "bg-blue-100 text-blue-700"}`}>
-                        {notice.sender || "Faculty"}
+                      <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${notice.sender === "Admin" || notice.postedBy === "Admin" ? "bg-rose-100 text-rose-700" : "bg-blue-100 text-blue-700"}`}>
+                        {notice.sender || notice.postedBy || "Faculty"}
                       </span>
                       <span className="text-xs font-bold text-gray-400">
                         {new Date(notice.date || notice.createdAt).toLocaleDateString()}
@@ -96,10 +128,14 @@ const StudentNotices = () => {
                   {/* BOOKMARK BUTTON */}
                   <button 
                     onClick={() => toggleBookmark(notice)}
-                    className={`p-3 rounded-full transition-all ${isSaved ? "bg-rose-50 text-rose-500" : "bg-gray-50 text-gray-400 hover:text-rose-400"}`}
+                    className="focus:outline-none transition-transform active:scale-90"
                     title={isSaved ? "Remove from Saved" : "Save for later"}
                   >
-                    <svg className="w-6 h-6" fill={isSaved ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+                    {isSaved ? (
+                        <FaBookmark className="text-blue-600 text-xl" />
+                    ) : (
+                        <FaRegBookmark className="text-gray-400 text-xl hover:text-blue-600" />
+                    )}
                   </button>
                 </div>
               </div>

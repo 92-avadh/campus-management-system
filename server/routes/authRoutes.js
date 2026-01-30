@@ -2,14 +2,15 @@ const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
+const jwt = require("jsonwebtoken"); // ✅ Import JWT
 const User = require("../models/User");
 
-// ✅ EMAIL TRANSPORTER SETUP
+// EMAIL TRANSPORTER SETUP
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: process.env.EMAIL_USER, // Your Admin Email
-    pass: process.env.EMAIL_PASS, // Your App Password
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
 });
 
@@ -35,7 +36,7 @@ router.post("/login-step1", async (req, res) => {
     user.otpExpires = Date.now() + 5 * 60 * 1000; // Expires in 5 mins
     await user.save();
 
-    // 4. Send Professional OTP Email
+    // 4. Send OTP Email
     const mailOptions = {
       from: '"ST College Security" <no-reply@stcollege.edu>',
       to: user.email,
@@ -48,20 +49,16 @@ router.post("/login-step1", async (req, res) => {
           <div style="padding: 30px; background-color: #ffffff; text-align: center;">
             <p style="color: #555; font-size: 16px;">Hello <strong>${user.name}</strong>,</p>
             <p style="color: #555;">Use the code below to complete your secure login.</p>
-            
             <div style="background-color: #f8fafc; border: 1px dashed #be123c; padding: 15px; margin: 20px 0; border-radius: 8px;">
               <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #be123c;">${otp}</span>
             </div>
-            
-            <p style="font-size: 12px; color: #888;">This code expires in 5 minutes. If you did not request this, please secure your account immediately.</p>
+            <p style="font-size: 12px; color: #888;">This code expires in 5 minutes.</p>
           </div>
         </div>
       `
     };
 
     await transporter.sendMail(mailOptions);
-    // console.log(`📧 OTP Sent to ${user.email}`); // Un-comment for debugging if needed
-
     res.json({ message: "OTP Sent", email: user.email }); 
 
   } catch (error) {
@@ -71,7 +68,7 @@ router.post("/login-step1", async (req, res) => {
 });
 
 /* =========================================
-   2. LOGIN STEP 2: VERIFY OTP
+   2. LOGIN STEP 2: VERIFY OTP & ISSUE TOKEN
 ========================================= */
 router.post("/login-step2", async (req, res) => {
   try {
@@ -89,28 +86,49 @@ router.post("/login-step2", async (req, res) => {
     user.otpExpires = undefined;
     await user.save();
 
-    res.json({
-      message: "Login Success",
+    // ✅ CREATE JWT PAYLOAD
+    const payload = {
       user: {
         id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        department: user.department,
-        userId: user.userId,
-        isFeePaid: user.isFeePaid,
-        course: user.course,
-        photo: user.photo // ✅ ADDED THIS LINE
+        role: user.role
       }
-    });
+    };
+
+    // ✅ SIGN TOKEN
+    jwt.sign(
+      payload,
+      process.env.JWT_SECRET, // Ensure this is in your .env file
+      { expiresIn: "5h" },
+      (err, token) => {
+        if (err) throw err;
+        
+        // Return Token + User Data
+        res.json({
+          message: "Login Success",
+          token, // <--- IMPORTANT: The client needs this
+          user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            department: user.department,
+            userId: user.userId,
+            isFeePaid: user.isFeePaid,
+            course: user.course,
+            photo: user.photo
+          }
+        });
+      }
+    );
 
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: "Server Error" });
   }
 });
 
 /* =========================================
-   3. CHANGE PASSWORD (General)
+   3. CHANGE PASSWORD
 ========================================= */
 router.post("/change-password", async (req, res) => {
   try {
@@ -143,7 +161,7 @@ router.post("/contact-admin", async (req, res) => {
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: process.env.EMAIL_USER, // Admin receives this
+      to: process.env.EMAIL_USER,
       subject: `[SUPPORT] ${subject} - from ${user.name}`,
       text: `User: ${user.name} (${user.userId})\nRole: ${user.role}\n\nMessage:\n${message}`
     };

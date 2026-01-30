@@ -1,152 +1,151 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
+import { FaSearch, FaCheckCircle, FaReply, FaClock } from "react-icons/fa";
 
-const FacultyDoubts = ({ user }) => {
+const FacultyDoubts = () => {
   const [doubts, setDoubts] = useState([]);
-  const [loading, setLoading] = useState(false);
-  
-  // State for answering
-  const [activeDoubtId, setActiveDoubtId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activeAnswerId, setActiveAnswerId] = useState(null); // Which doubt we are answering
   const [answerText, setAnswerText] = useState("");
 
-  // ✅ 1. FETCH DOUBTS (Wrapped in useCallback to fix dependency warning)
-  const fetchDoubts = useCallback(async () => {
+  // Get Current Faculty ID
+  const user = JSON.parse(sessionStorage.getItem("currentUser"));
+  const facultyId = user ? user.id : null;
+
+  // 1. Fetch Doubts
+  const fetchDoubts = async () => {
+    if (!facultyId) return;
     try {
-      // Handle both _id and id just in case
-      const userId = user._id || user.id;
-      const res = await fetch(`http://localhost:5000/api/faculty/doubts/${userId}`);
+      const res = await fetch(`http://localhost:5000/api/faculty/doubts/${facultyId}`);
       const data = await res.json();
       setDoubts(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("Error fetching doubts:", err);
-    }
-  }, [user]); // Logic depends on 'user'
-
-  // ✅ 2. USE EFFECT (Now safely depends on fetchDoubts)
-  useEffect(() => {
-    fetchDoubts();
-  }, [fetchDoubts]);
-
-  // ✅ 3. SUBMIT ANSWER
-  const handleSubmitAnswer = async (id) => {
-    if (!answerText.trim()) return alert("Please type an answer first.");
-    setLoading(true);
-
-    try {
-      const res = await fetch(`http://localhost:5000/api/faculty/answer-doubt/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answer: answerText }),
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        alert("✅ Answer sent to student!");
-        setActiveDoubtId(null);
-        setAnswerText("");
-        fetchDoubts(); // Refresh list using the stable function
-      } else {
-        alert("❌ " + data.message);
-      }
-    } catch (err) {
-      alert("Error sending answer");
+      console.error("Fetch Error:", err);
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchDoubts();
+  }, [facultyId]);
+
+  // 2. Submit Answer
+  const handleSubmitAnswer = async (id) => {
+    if (!answerText.trim()) return;
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/faculty/answer-doubt/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answer: answerText })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        alert("✅ Answer Sent!");
+        setAnswerText("");
+        setActiveAnswerId(null);
+        fetchDoubts(); // Refresh
+      } else {
+        alert("❌ Error: " + data.message);
+      }
+    } catch (err) {
+      alert("Server Error");
+    }
+  };
+
+  if (loading) return <div className="p-8 text-center text-gray-500">Loading queries...</div>;
+
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-5xl mx-auto">
+    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
-      <div className="mb-8">
+      {/* HEADER */}
+      <div>
         <h2 className="text-3xl font-black text-gray-900 dark:text-white">Student Queries</h2>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">Resolve academic doubts from your students.</p>
+        <p className="text-gray-500 dark:text-gray-400">Answer questions raised by your students.</p>
       </div>
 
+      {/* LIST */}
       <div className="space-y-6">
         {doubts.length === 0 ? (
-          <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-[2rem] border border-dashed border-gray-300 dark:border-gray-700">
-            <p className="text-gray-400 font-bold">No queries found. Great job!</p>
+          <div className="bg-white dark:bg-gray-800 p-12 rounded-[2rem] text-center border-2 border-dashed border-gray-200 dark:border-gray-700">
+             <p className="text-gray-400 font-bold text-lg">No queries found. Good job! 🎉</p>
           </div>
         ) : (
           doubts.map((doubt) => (
-            <div key={doubt._id} className={`p-6 rounded-[2rem] border transition-all ${
-              doubt.status === "Pending" 
-                ? "bg-white dark:bg-gray-800 border-indigo-100 dark:border-indigo-900/30 shadow-lg shadow-indigo-100/50" 
-                : "bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 opacity-80 hover:opacity-100"
-            }`}>
+            <div key={doubt._id} className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all hover:shadow-md">
               
-              {/* HEADER */}
+              {/* Question Header */}
               <div className="flex justify-between items-start mb-4">
-                <div className="flex gap-3 items-center">
-                  <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider ${
-                    doubt.status === "Resolved" 
-                      ? "bg-emerald-100 text-emerald-700" 
-                      : "bg-amber-100 text-amber-700 animate-pulse"
-                  }`}>
+                <div className="flex items-center gap-3">
+                  <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${doubt.status === 'Resolved' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
                     {doubt.status}
                   </span>
                   <span className="text-xs font-bold text-gray-400">
                     {new Date(doubt.createdAt).toLocaleDateString()}
                   </span>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-gray-900 dark:text-white">{doubt.studentName || "Student"}</p>
-                  <p className="text-xs text-gray-500">{doubt.course} • {doubt.subject}</p>
+                  <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                    {doubt.studentName || "Student"} ({doubt.course})
+                  </span>
                 </div>
               </div>
 
-              {/* QUESTION */}
+              {/* The Question */}
               <div className="mb-6">
-                <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-800/30">
-                   <p className="text-gray-800 dark:text-gray-200 font-medium text-sm leading-relaxed">
-                     "{doubt.question}"
-                   </p>
-                </div>
+                 <h4 className="text-lg font-bold text-gray-800 dark:text-white mb-1">
+                   {doubt.subject}
+                 </h4>
+                 <p className="text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border-l-4 border-orange-400">
+                   "{doubt.question}"
+                 </p>
               </div>
 
-              {/* ACTION AREA */}
+              {/* The Answer Section */}
               {doubt.status === "Resolved" ? (
-                <div className="pl-4 border-l-4 border-emerald-400">
-                  <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Your Answer</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{doubt.answer}</p>
+                <div className="ml-4 mt-4">
+                  <div className="flex items-center gap-2 mb-2">
+                     <FaCheckCircle className="text-green-500" />
+                     <span className="text-sm font-bold text-gray-700 dark:text-gray-300">Your Answer:</span>
+                  </div>
+                  <p className="text-gray-600 dark:text-gray-400 bg-green-50 dark:bg-green-900/10 p-4 rounded-xl">
+                    {doubt.answer}
+                  </p>
                 </div>
               ) : (
-                <div>
-                  {activeDoubtId === doubt._id ? (
-                    <div className="animate-in fade-in">
-                      <textarea
-                        autoFocus
-                        rows="3"
-                        placeholder="Type your explanation here..."
-                        value={answerText}
-                        onChange={(e) => setAnswerText(e.target.value)}
-                        className="w-full p-4 rounded-xl border border-indigo-200 dark:border-indigo-700 bg-white dark:bg-gray-900 focus:ring-4 focus:ring-indigo-500/10 outline-none transition text-sm font-medium mb-3"
-                      />
-                      <div className="flex gap-3">
-                        <button 
-                          onClick={() => { setActiveDoubtId(null); setAnswerText(""); }}
-                          className="px-6 py-2 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                          Cancel
-                        </button>
-                        <button 
-                          onClick={() => handleSubmitAnswer(doubt._id)}
-                          disabled={loading}
-                          className="px-6 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-none"
-                        >
-                          {loading ? "Sending..." : "Submit Answer"}
-                        </button>
+                // Answering Interface
+                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                   {activeAnswerId === doubt._id ? (
+                      <div className="space-y-3">
+                        <textarea 
+                          className="w-full p-4 bg-gray-50 dark:bg-gray-900 dark:text-white rounded-xl border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                          rows="3"
+                          placeholder="Type your explanation here..."
+                          value={answerText}
+                          onChange={(e) => setAnswerText(e.target.value)}
+                        />
+                        <div className="flex justify-end gap-2">
+                           <button 
+                             onClick={() => setActiveAnswerId(null)}
+                             className="px-4 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded-lg transition-colors"
+                           >
+                             Cancel
+                           </button>
+                           <button 
+                             onClick={() => handleSubmitAnswer(doubt._id)}
+                             className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors flex items-center gap-2"
+                           >
+                             <FaReply /> Send Answer
+                           </button>
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <button 
-                      onClick={() => setActiveDoubtId(doubt._id)}
-                      className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-sm hover:underline"
-                    >
-                      <span>↩️</span> Reply to Student
-                    </button>
-                  )}
+                   ) : (
+                      <button 
+                        onClick={() => { setActiveAnswerId(doubt._id); setAnswerText(""); }}
+                        className="text-blue-600 font-bold text-sm hover:underline flex items-center gap-2"
+                      >
+                        <FaReply /> Reply to this doubt
+                      </button>
+                   )}
                 </div>
               )}
 

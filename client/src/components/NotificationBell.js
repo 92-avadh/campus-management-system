@@ -1,41 +1,69 @@
-import React, { useState, useEffect, useCallback } from "react"; // ✅ Import useCallback
+import React, { useState, useEffect, useCallback } from "react"; 
 
 const NotificationBell = ({ studentId }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // ✅ FIX: Wrap function in useCallback so it doesn't get re-created on every render
+  // ✅ 1. FETCH NOTIFICATIONS (From the correct Notification Route)
   const fetchNotifications = useCallback(async () => {
     if (!studentId) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/student/notifications/${studentId}`);
+      // FIX: Use the specific notifications route, not the student route
+      const res = await fetch(`http://localhost:5000/api/notifications/notifications/${studentId}`);
       const data = await res.json();
-      if (res.ok) {
-        setUnreadCount(data.count);
-        setNotifications(data.notifications || []);
+      
+      if (res.ok && Array.isArray(data)) {
+        setNotifications(data);
+        // Calculate unread count on the client side
+        const unread = data.filter(n => !n.read).length;
+        setUnreadCount(unread);
       }
     } catch (error) {
       console.error("Notification error:", error);
     }
-  }, [studentId]); // ✅ Only re-create if studentId changes
+  }, [studentId]);
 
-  // ✅ AUTO-REFRESH LOGIC
+  // ✅ 2. MARK ALL AS READ (When opening the menu)
+  const markAllAsRead = async () => {
+    if (!studentId || unreadCount === 0) return;
+    
+    try {
+      await fetch("http://localhost:5000/api/notifications/notifications/read-all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId })
+      });
+      setUnreadCount(0); // Clear red dot immediately
+    } catch (error) {
+      console.error("Error marking read:", error);
+    }
+  };
+
+  // ✅ 3. HANDLE TOGGLE
+  const toggleMenu = () => {
+    if (!isOpen) {
+      markAllAsRead(); // Mark read when opening
+    }
+    setIsOpen(!isOpen);
+  };
+
+  // ✅ 4. AUTO-REFRESH LOGIC
   useEffect(() => {
-    fetchNotifications(); // 1. Fetch immediately on load
+    fetchNotifications(); // Initial fetch
 
     const interval = setInterval(() => {
-      fetchNotifications(); // 2. Fetch every 5 seconds
+      fetchNotifications(); // Poll every 5 seconds
     }, 5000);
 
-    return () => clearInterval(interval); // 3. Cleanup on unmount
-  }, [fetchNotifications]); // ✅ Added 'fetchNotifications' to dependency array
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
   return (
     <div className="relative">
       {/* 🔔 BELL ICON */}
       <button 
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggleMenu}
         className="relative p-2 rounded-xl transition-all duration-300 
                    text-gray-600 hover:bg-rose-50 hover:text-rose-600 
                    dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
@@ -60,6 +88,8 @@ const NotificationBell = ({ studentId }) => {
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>
 
           <div className="absolute right-0 mt-4 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
+            
+            {/* Header */}
             <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50">
               <h3 className="font-bold text-gray-800 dark:text-white text-sm">Notifications</h3>
               {unreadCount > 0 ? (
@@ -69,15 +99,25 @@ const NotificationBell = ({ studentId }) => {
               )}
             </div>
             
+            {/* List */}
             <div className="max-h-64 overflow-y-auto custom-scrollbar">
               {notifications.length > 0 ? (
                 notifications.map((n) => (
-                  <div key={n.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 border-b border-gray-50 dark:border-gray-700/50 transition-colors cursor-pointer group">
+                  <div key={n._id} className={`p-4 border-b border-gray-50 dark:border-gray-700/50 transition-colors cursor-pointer group hover:bg-gray-50 dark:hover:bg-gray-700/50 ${!n.read ? "bg-blue-50/50 dark:bg-blue-900/10" : ""}`}>
                     <div className="flex justify-between items-start">
-                      <p className="text-sm text-gray-700 dark:text-gray-200 font-bold group-hover:text-rose-600 transition-colors">{n.subject}</p>
-                      <span className="text-[10px] text-gray-400">{n.time}</span>
+                      {/* FIX: Use n.title instead of n.subject */}
+                      <p className="text-sm text-gray-700 dark:text-gray-200 font-bold group-hover:text-rose-600 transition-colors">
+                        {n.title}
+                      </p>
+                      {/* FIX: Use n.createdAt instead of n.time */}
+                      <span className="text-[10px] text-gray-400">
+                        {new Date(n.createdAt).toLocaleDateString()}
+                      </span>
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{n.text}</p>
+                    {/* FIX: Use n.message instead of n.text */}
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {n.message}
+                    </p>
                   </div>
                 ))
               ) : (
@@ -87,11 +127,6 @@ const NotificationBell = ({ studentId }) => {
               )}
             </div>
             
-            {unreadCount > 0 && (
-               <div className="p-3 bg-gray-50 dark:bg-gray-700/30 text-center">
-                 <button className="text-xs font-bold text-rose-600 hover:text-rose-700 transition-colors">View All Materials</button>
-               </div>
-            )}
           </div>
         </>
       )}

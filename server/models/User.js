@@ -22,7 +22,17 @@ const userSchema = new mongoose.Schema({
   
   // OTP
   otp: { type: String },
-  otpExpires: { type: Date }
+  otpExpires: { type: Date },
+
+  // ✅ NEW: Persistent Bookmarks (Stores copy of notice)
+  bookmarks: [{
+    noticeId: { type: String }, // Reference to original
+    title: { type: String },
+    content: { type: String },
+    date: { type: Date },
+    sender: { type: String }
+  }]
+
 }, { timestamps: true });
 
 module.exports = mongoose.model("User", userSchema);

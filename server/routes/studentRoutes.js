@@ -11,7 +11,7 @@ const User = require("../models/User");
 const Material = require("../models/Material");
 const Attendance = require("../models/Attendance");
 const Query = require("../models/Query"); 
-const Notice = require("../models/Notice"); // ✅ Ensure Notice is imported
+const Notice = require("../models/Notice"); 
 
 const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -135,7 +135,7 @@ router.put("/change-password/:id", async (req, res) => {
 });
 
 /* =========================================
-   6. GET NOTIFICATIONS (Existing - for bell)
+   6. GET NOTIFICATIONS
 ========================================= */
 router.get("/notifications/:studentId", async (req, res) => {
   try {
@@ -157,12 +157,11 @@ router.get("/notifications/:studentId", async (req, res) => {
 });
 
 /* =========================================
-   7. GET FACULTY LIST (Case Insensitive)
+   7. GET FACULTY LIST
 ========================================= */
 router.get("/faculty-list/:department", async (req, res) => {
   try {
     const dept = req.params.department.trim();
-    // Regex: Matches "BCA", "bca", "B.C.A", etc.
     const faculty = await User.find({
       role: "faculty",
       department: { $regex: new RegExp(`^${dept}$`, "i") }
@@ -200,17 +199,61 @@ router.get("/my-doubts/:studentId", async (req, res) => {
 });
 
 /* =========================================
-   10. GET ALL NOTICES (✅ NEW)
+   10. GET ALL NOTICES
 ========================================= */
 router.get("/notices", async (req, res) => {
   try {
-    const notices = await Notice.find().sort({ date: -1 });
+    const notices = await Notice.find({
+      target: { $in: ["student", "all"] }
+    }).sort({ date: -1 });
     res.json(notices);
   } catch (err) {
     res.status(500).json({ message: "Server Error" });
   }
 });
 
+/* =========================================
+   11. TOGGLE BOOKMARK (✅ NEW ROUTE)
+========================================= */
+router.post("/toggle-bookmark", async (req, res) => {
+  try {
+    const { studentId, noticeId } = req.body;
+    const user = await User.findById(studentId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    
+    // Check if already bookmarked
+    const exists = user.bookmarks.find(b => b.noticeId === noticeId);
+    
+    if (exists) {
+      // Remove it
+      user.bookmarks = user.bookmarks.filter(b => b.noticeId !== noticeId);
+      await user.save();
+      return res.json({ success: true, message: "Removed from bookmarks", bookmarks: user.bookmarks });
+    } else {
+      // Add it (Find original notice)
+      const notice = await Notice.findById(noticeId);
+      if (!notice) return res.status(404).json({ message: "Notice expired or not found" });
+
+      // Save COPY of notice (so it persists after deletion)
+      user.bookmarks.push({
+        noticeId: notice._id.toString(),
+        title: notice.title,
+        content: notice.content,
+        date: notice.date,
+        sender: notice.postedBy
+      });
+      await user.save();
+      return res.json({ success: true, message: "Saved to bookmarks", bookmarks: user.bookmarks });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error updating bookmarks" });
+  }
+});
+
+/* =========================================
+   12. FILE OPERATIONS
+========================================= */
 router.post("/view-material/:materialId", async (req, res) => {
     try {
       await Material.findByIdAndUpdate(req.params.materialId, {
