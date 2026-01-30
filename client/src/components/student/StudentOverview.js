@@ -18,9 +18,8 @@ const StudentOverview = ({ user }) => {
         <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-black/10 rounded-full blur-2xl"></div>
         
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-6">
-          <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-3xl font-black border border-white/10 shadow-lg">
-            {user.name.charAt(0)}
-          </div>
+          {/* ✅ REMOVED THE FIRST LETTER BOX */}
+          
           <div className="flex-1">
             <h2 className="text-3xl font-bold">{user.name}</h2>
             <p className="text-rose-100 font-medium text-lg opacity-90">{user.course} Student</p>

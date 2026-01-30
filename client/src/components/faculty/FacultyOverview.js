@@ -11,9 +11,7 @@ const FacultyOverview = ({ user, students, materialsCount }) => {
         <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-40 h-40 bg-black/10 rounded-full blur-2xl"></div>
         
         <div className="relative z-10 flex items-center gap-6">
-          <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-3xl font-black border border-white/10 shadow-lg">
-            {user.name.charAt(0)}
-          </div>
+          {/* ✅ REMOVED PROFILE ICON DIV */}
           <div>
             <h2 className="text-3xl font-bold">Welcome, Prof. {user.name.split(' ')[0]}</h2>
             <p className="text-blue-100 font-medium text-lg opacity-90">{user.department} Department</p>

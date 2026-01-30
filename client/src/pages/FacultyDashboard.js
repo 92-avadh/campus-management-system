@@ -45,7 +45,7 @@ const FacultyDashboard = () => {
     initDashboard();
   }, [navigate]);
 
-  // --- DATA FETCHERS (Keep existing fetch logic) ---
+  // --- DATA FETCHERS ---
   const fetchStudents = async (dept) => {
     try {
       const res = await fetch(`http://localhost:5000/api/faculty/students?department=${encodeURIComponent(dept)}`);
@@ -85,7 +85,8 @@ const FacultyDashboard = () => {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex font-sans text-gray-900 dark:text-gray-100 transition-colors duration-300">
+    // ✅ FIXED: h-screen overflow-hidden removes outer scrollbar & whitespace
+    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900 font-sans text-gray-900 dark:text-gray-100 transition-colors duration-300">
       
       {/* Sidebar */}
       <div className="fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gray-800 shadow-2xl transform transition-transform duration-300 md:translate-x-0 md:static">
@@ -98,7 +99,7 @@ const FacultyDashboard = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
+      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
         
         {/* Header */}
         <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md sticky top-0 z-40 border-b border-gray-200 dark:border-gray-700 px-8 py-4 flex justify-between items-center shadow-sm">
@@ -112,14 +113,20 @@ const FacultyDashboard = () => {
           </div>
           <div className="flex items-center gap-6">
             <ThemeToggle />
-            <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold text-lg border border-blue-200 dark:border-blue-800 shadow-sm">
-               {user.name.charAt(0)}
-            </div>
+            
+            {/* ✅ LOGOUT BUTTON ADDED */}
+            <button 
+              onClick={handleLogout} 
+              className="bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 px-5 py-2.5 rounded-xl text-xs font-bold transition-all border border-red-100 dark:border-red-900/30 shadow-sm"
+            >
+              LOGOUT
+            </button>
           </div>
         </header>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+        {/* ✅ ADDED: [&::-webkit-scrollbar]:hidden to hide scrollbar visuals */}
+        <div className="flex-1 overflow-y-auto p-8 [&::-webkit-scrollbar]:hidden">
           <div className="max-w-7xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {activeTab === "dashboard" && <FacultyOverview user={user} students={students} materialsCount={myMaterials.length} />}
             {activeTab === "attendance" && <FacultyAttendance user={user} subjects={subjects} />}

@@ -1,16 +1,16 @@
 import React from "react";
 
-const AdminSidebar = ({ activeTab, setActiveTab, handleLogout }) => {
+const AdminSidebar = ({ activeTab, setActiveTab }) => {
   const menuItems = [
-    { id: "dashboard", label: "Overview", icon: "📊" },
-    { id: "applications", label: "Admissions", icon: "📝" },
+    { id: "dashboard", label: "Overview", icon: "🏠" },
+    { id: "applications", label: "Admissions", icon: "📄" },
     { id: "users", label: "Manage Users", icon: "👥" },
     { id: "courses", label: "Courses", icon: "📚" },
-    { id: "notices", label: "Notices", icon: "📢" } // ✅ Added this line
+    { id: "notices", label: "Notices", icon: "📢" }
   ];
 
   return (
-    <aside className="w-72 bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 hidden md:flex flex-col h-screen sticky top-0 shadow-2xl z-20 transition-colors duration-300">
+    <aside className="w-72 bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 hidden md:flex flex-col h-full shadow-2xl z-20 transition-colors duration-300">
       <div className="p-8 flex items-center justify-center border-b border-gray-100 dark:border-gray-800">
          <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-indigo-500/30">A</div>
@@ -18,7 +18,7 @@ const AdminSidebar = ({ activeTab, setActiveTab, handleLogout }) => {
          </div>
       </div>
       
-      <nav className="flex-1 p-6 space-y-3">
+      <nav className="flex-1 p-6 space-y-3 overflow-y-auto">
         {menuItems.map((item) => (
           <button 
             key={item.id}
@@ -34,16 +34,15 @@ const AdminSidebar = ({ activeTab, setActiveTab, handleLogout }) => {
         ))}
       </nav>
 
-      <div className="p-8 border-t border-gray-100 dark:border-gray-800">
+      <div className="p-6 border-t border-gray-100 dark:border-gray-800">
         <button 
-          onClick={handleLogout} 
-          className="w-full bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/10 dark:text-red-400 dark:hover:bg-red-900/20 py-4 rounded-2xl text-sm font-black transition-colors"
+          onClick={() => setActiveTab("settings")}
+          className={`w-full flex items-center justify-center gap-3 p-3 rounded-2xl transition-all text-sm font-bold ${activeTab === "settings" ? "bg-gray-100 dark:bg-gray-800 text-indigo-600" : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800"}`}
         >
-          LOGOUT
+          ⚙️ Settings
         </button>
       </div>
     </aside>
   );
 };
-
 export default AdminSidebar;

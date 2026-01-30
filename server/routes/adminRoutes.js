@@ -6,11 +6,34 @@ const User = require("../models/User");
 const Application = require("../models/Application");
 const Notice = require("../models/Notice");
 
-// ✅ EMAIL TRANSPORTER
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-});
+// --- 📧 EMAIL HELPERS ---
+const sendApprovalEmail = async (email, name, userId, password, course) => {
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+  });
+  const mailOptions = {
+    from: `"SDJIC Admissions" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: `Congratulations! Your Admission to SDJIC is Approved`,
+    text: `Dear ${name},\n\nYour account details:\nUser ID: ${userId}\nTemporary Password: ${password}\n\nLogin at: http://localhost:3000/login`
+  };
+  try { await transporter.sendMail(mailOptions); } catch (err) { console.log(err); }
+};
+
+const sendCredentialsEmail = async (email, name, userId, password, role) => {
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+  });
+  const mailOptions = {
+    from: `"SDJIC System" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: `Your ${role.toUpperCase()} Account Credentials`,
+    text: `Dear ${name},\n\nUser ID: ${userId}\nTemporary Password: ${password}\n\nLogin: http://localhost:3000/login`
+  };
+  try { await transporter.sendMail(mailOptions); } catch (err) { console.log(err); }
+};
 
 // --- 1. GET PENDING APPLICATIONS ---
 router.get("/applications", async (req, res) => {
@@ -26,13 +49,11 @@ router.post("/approve/:id", async (req, res) => {
     const app = await Application.findById(req.params.id);
     if (!app) return res.status(404).json({ message: "Application not found" });
 
-    // Generate Credentials
     const count = await User.countDocuments({ role: "student" });
     const newId = `${new Date().getFullYear()}${String(count + 1).padStart(3, '0')}`; 
     const rawPassword = Math.random().toString(36).slice(-8);
     const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
-    // Create Student User
     const newUser = new User({
       name: app.name, 
       email: app.email, 
@@ -46,86 +67,41 @@ router.post("/approve/:id", async (req, res) => {
     });
 
     await newUser.save();
-    
-    // Send Approval Email
-    const mailOptions = {
-      from: `"ST College Admissions" <${process.env.EMAIL_USER}>`,
-      to: app.email,
-      subject: `🎉 Admission Approved - ST College`,
-      html: `
-        <div style="padding:20px; font-family:Arial;">
-          <h2 style="color:#059669;">Congratulations, ${app.name}!</h2>
-          <p>Your admission for <strong>${app.course}</strong> has been approved.</p>
-          <div style="background:#f3f4f6; padding:15px; border-radius:10px; margin:20px 0;">
-            <p><strong>User ID:</strong> ${newId}</p>
-            <p><strong>Password:</strong> ${rawPassword}</p>
-          </div>
-          <p>Please login and change your password immediately.</p>
-        </div>
-      `
-    };
-    await transporter.sendMail(mailOptions);
-
-    // Remove from Applications
     await Application.findByIdAndDelete(req.params.id);
-
+    await sendApprovalEmail(app.email, app.name, newId, rawPassword, app.course);
     res.json({ message: "Student Approved and credentials emailed." });
-  } catch (err) { 
-    console.error(err);
-    res.status(500).json({ message: "Error during approval" }); 
-  }
+  } catch (err) { res.status(500).json({ message: "Error during approval" }); }
 });
 
-// --- 3. REJECT APPLICATION (With Reason) ---
+// --- 3. REJECT APPLICATION ---
 router.post("/reject/:id", async (req, res) => {
   try {
-    const { reason } = req.body; // ✅ Get reason from body
-    const app = await Application.findById(req.params.id);
-    
-    if (!app) return res.status(404).json({ message: "Application not found" });
-
-    // ✅ Send Rejection Email with Reason
-    const mailOptions = {
-      from: `"ST College Admissions" <${process.env.EMAIL_USER}>`,
-      to: app.email,
-      subject: `⚠️ Update regarding your Admission Application`,
-      html: `
-        <div style="padding:20px; font-family:Arial;">
-          <h2 style="color:#dc2626;">Application Status Update</h2>
-          <p>Dear ${app.name},</p>
-          <p>Thank you for your interest in ST College.</p>
-          <p>After reviewing your application, we regret to inform you that we cannot move forward at this time.</p>
-          
-          <div style="background:#fff1f2; border:1px solid #fda4af; padding:15px; border-radius:10px; margin:20px 0;">
-            <strong>Reason for Rejection:</strong><br/>
-            ${reason || "Document discrepancy or eligibility criteria not met."}
-          </div>
-
-          <p><strong>You are welcome to re-apply</strong> with corrected details or documents.</p>
-        </div>
-      `
-    };
-    await transporter.sendMail(mailOptions);
-
-    // ✅ Delete Application so they can re-apply
-    await Application.findByIdAndDelete(req.params.id);
-    
-    res.json({ message: "Application rejected, email sent, and record removed." });
+    const deletedApp = await Application.findByIdAndDelete(req.params.id);
+    if (!deletedApp) return res.status(404).json({ message: "Application not found" });
+    res.json({ message: "Application rejected and permanently removed." });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ message: "Error rejecting application" });
   }
 });
 
-// --- 4. OTHER ADMIN ROUTES (Keep existing) ---
+// --- 4. BROADCAST NOTICE ---
 router.post("/send-notice", async (req, res) => {
   try {
     const { title, content } = req.body;
-    await new Notice({ title, content, sender: "Admin", date: new Date() }).save();
-    res.json({ message: "Notice broadcasted successfully!" });
-  } catch (err) { res.status(500).json({ message: "Error sending notice" }); }
+    const newNotice = new Notice({
+      title,
+      content,
+      sender: "Admin",
+      date: new Date()
+    });
+    await newNotice.save();
+    res.json({ message: "Notice broadcasted successfully to all members!" });
+  } catch (err) {
+    res.status(500).json({ message: "Error sending notice" });
+  }
 });
 
+// --- 5. ADD FACULTY OR ADMIN ---
 router.post("/add-user", async (req, res) => {
   try {
     const { name, email, phone, role, department } = req.body;
@@ -140,26 +116,52 @@ router.post("/add-user", async (req, res) => {
 
     const newUser = new User({ name, email, phone, role, department, userId: newId, password: hashedPassword });
     await newUser.save();
-    
-    // Send Credentials Email
-    const mailOptions = {
-      from: `"ST College System" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: `Your ${role.toUpperCase()} Account Credentials`,
-      text: `Dear ${name},\n\nUser ID: ${newId}\nTemporary Password: ${rawPassword}\n\nLogin: http://localhost:3000/login`
-    };
-    await transporter.sendMail(mailOptions);
-
+    await sendCredentialsEmail(email, name, newId, rawPassword, role);
     res.json({ message: "User added and credentials emailed." });
   } catch (err) { res.status(500).json({ message: "Error adding user" }); }
 });
 
+// --- 6. GET ALL USERS & REMOVE ---
 router.get("/all-users", async (req, res) => {
   try { res.json(await User.find({}, "-password")); } catch (err) { res.status(500).json({ message: "Error" }); }
 });
 
 router.delete("/remove-user/:id", async (req, res) => {
   try { await User.findByIdAndDelete(req.params.id); res.json({ message: "User deleted successfully" }); } catch (err) { res.status(500).json({ message: "Error" }); }
+});
+
+/* =======================
+   PROFILE & SETTINGS (✅ NEW)
+======================= */
+router.get("/profile/:id", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select("-password");
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json(user);
+  } catch (err) { res.status(500).json({ message: "Server Error" }); }
+});
+
+router.put("/update-profile/:id", async (req, res) => {
+  try {
+    const { email, phone, address, dob } = req.body;
+    await User.findByIdAndUpdate(req.params.id, { email, phone, address, dob });
+    res.json({ success: true, message: "Profile updated!" });
+  } catch (err) { res.status(500).json({ success: false, message: "Update failed" }); }
+});
+
+router.put("/change-password/:id", async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) return res.status(400).json({ success: false, message: "Incorrect current password" });
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    res.json({ success: true, message: "Password changed!" });
+  } catch (err) { res.status(500).json({ success: false, message: "Error" }); }
 });
 
 module.exports = router;
