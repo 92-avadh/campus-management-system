@@ -1,32 +1,32 @@
 import React from "react";
+// ✅ Import Realistic (Color) Icons
 import { 
-  FaHome, FaUserGraduate, FaClipboardList, FaBullhorn, 
-  FaBook, FaQuestionCircle, FaCog, FaSignOutAlt 
-} from "react-icons/fa";
-// ✅ 1. Import BASE_URL (the root server URL without /api)
+  FcHome, 
+  FcCalendar, 
+  FcReading, 
+  FcAdvertising, // Megaphone for Notices
+  FcComments,    // Chat for Doubts
+  FcMoneyTransfer, 
+  FcSettings 
+} from "react-icons/fc"; 
 import { BASE_URL } from "../../apiConfig";
 
-const StudentSidebar = ({ user, activeTab, setActiveTab, handleLogout, resolvedQueries }) => {
+const StudentSidebar = ({ user, activeTab, setActiveTab, resolvedQueries }) => {
+  
+  // ✅ 1. REALISTIC ICONS LIST
   const menuItems = [
-    { id: "dashboard", label: "Dashboard", icon: <FaHome /> },
-    { id: "attendance", label: "Attendance", icon: <FaUserGraduate /> },
-    { id: "courses", label: "My Courses", icon: <FaClipboardList /> },
-    { id: "notices", label: "Notices", icon: <FaBullhorn /> },
-    { id: "fees", label: "Fee Payment", icon: <FaBook /> },
-    { id: "doubts", label: "Academic Doubts", icon: <FaQuestionCircle /> },
+    { id: "dashboard", label: "Dashboard", icon: <FcHome size={22} /> },
+    { id: "attendance", label: "Attendance", icon: <FcCalendar size={22} /> },
+    { id: "courses", label: "My Courses", icon: <FcReading size={22} /> },
+    { id: "notices", label: "Notices", icon: <FcAdvertising size={22} /> },
+    { id: "doubts", label: "Academic Doubts", icon: <FcComments size={22} /> },
+    { id: "fees", label: "Fee Payment", icon: <FcMoneyTransfer size={22} /> },
   ];
 
-  // ✅ 2. Helper to get the correct photo URL for Mobile & PC
   const getPhotoUrl = (photoPath) => {
     if (!photoPath) return "https://cdn-icons-png.flaticon.com/512/3135/3135715.png";
-    
-    // If it's already a full web link, use it
     if (photoPath.startsWith("http")) return photoPath;
-
-    // Convert Windows backslashes to forward slashes
     const cleanPath = photoPath.replace(/\\/g, "/");
-    
-    // Prepend the Server IP (e.g., http://192.168.1.5:5000/uploads/photo.jpg)
     return `${BASE_URL}/${cleanPath}`;
   };
 
@@ -34,73 +34,74 @@ const StudentSidebar = ({ user, activeTab, setActiveTab, handleLogout, resolvedQ
     <div className="h-full flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-colors duration-300">
       
       {/* PROFILE SECTION */}
-      <div className="p-8 border-b border-gray-100 dark:border-gray-700 flex flex-col items-center text-center">
+      <div className="pt-8 pb-4 px-8 flex flex-col items-center text-center">
         <div className="relative mb-4 group">
-          <div className="w-24 h-24 rounded-full p-1 bg-gradient-to-tr from-blue-500 to-indigo-500 shadow-lg shadow-blue-500/30">
-            {/* ✅ 3. Updated Image Source */}
+          <div className="w-24 h-24 rounded-full p-1 bg-white dark:bg-gray-800 shadow-xl border border-gray-100 dark:border-gray-700">
             <img 
               src={getPhotoUrl(user.photo)} 
               alt="Profile" 
-              className="w-full h-full rounded-full object-cover border-4 border-white dark:border-gray-800 bg-white"
+              className="w-full h-full rounded-full object-cover bg-gray-100"
               onError={(e) => {
                 e.target.onerror = null; 
                 e.target.src = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png";
               }}
             />
           </div>
-          <div className="absolute bottom-1 right-1 w-6 h-6 bg-emerald-500 border-4 border-white dark:border-gray-800 rounded-full"></div>
+          <div className="absolute bottom-1 right-1 w-5 h-5 bg-emerald-500 border-4 border-white dark:border-gray-800 rounded-full"></div>
         </div>
         
-        {/* User Info - Optimized for Mobile spacing */}
-        <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight mb-1 truncate w-full px-2">
+        <h3 className="text-xl font-black text-gray-900 dark:text-white mb-1">
           {user.name}
         </h3>
-        <p className="text-[10px] font-bold text-blue-500 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-full uppercase tracking-wider inline-block">
-          {user.course} Student
-        </p>
       </div>
 
       {/* MENU */}
-      <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-2 [&::-webkit-scrollbar]:hidden">
+      <nav className="flex-1 overflow-y-auto py-2 px-4 space-y-2 [&::-webkit-scrollbar]:hidden">
         {menuItems.map((item) => (
           <button
             key={item.id}
             onClick={() => setActiveTab(item.id)}
-            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 group relative ${
+            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 group relative border ${
               activeTab === item.id 
-                ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30 translate-x-1" 
-                : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-blue-600 dark:hover:text-blue-400"
+                ? "bg-indigo-600 border-indigo-600 text-white shadow-xl shadow-indigo-200 dark:shadow-none translate-x-1" 
+                : "bg-transparent border-transparent text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:border-gray-100 dark:hover:border-gray-600"
             }`}
           >
-            <span className={`text-xl ${activeTab === item.id ? "animate-pulse" : ""}`}>
+            {/* Icon */}
+            <span className="text-xl drop-shadow-sm">
               {item.icon}
             </span>
-            <span className="font-bold text-sm tracking-wide">{item.label}</span>
             
-            {item.id === "doubts" && resolvedQueries > 0 && (
-               <span className="absolute right-4 bg-emerald-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+            {/* Label */}
+            <span className={`font-black text-xs uppercase tracking-wider ${activeTab === item.id ? "text-white" : "text-gray-600 dark:text-gray-400"}`}>
+              {item.label}
+            </span>
+            
+            {/* ✅ 2. FIX: Badge disappears when you are on the 'doubts' tab */}
+            {item.id === "doubts" && resolvedQueries > 0 && activeTab !== "doubts" && (
+               <span className="absolute right-4 bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg animate-bounce">
                  {resolvedQueries}
                </span>
+            )}
+
+            {activeTab === item.id && (
+              <div className="absolute left-0 w-1.5 h-6 bg-white rounded-r-full"></div>
             )}
           </button>
         ))}
       </nav>
 
       {/* FOOTER */}
-      <div className="p-4 border-t border-gray-100 dark:border-gray-700 space-y-2">
+      <div className="p-4 border-t border-gray-100 dark:border-gray-700">
         <button 
           onClick={() => setActiveTab("settings")}
-          className={`w-full flex items-center gap-3 px-5 py-3 rounded-xl transition-all font-bold text-xs uppercase tracking-wider ${
-            activeTab === "settings" ? "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+          className={`w-full flex items-center gap-3 px-6 py-4 rounded-2xl transition-all font-black text-[10px] uppercase tracking-[0.2em] ${
+            activeTab === "settings" 
+              ? "bg-gray-900 text-white shadow-lg" 
+              : "text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white"
           }`}
         >
-          <FaCog className="text-lg" /> Settings
-        </button>
-        <button 
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-5 py-3 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/10 transition-all font-bold text-xs uppercase tracking-wider"
-        >
-          <FaSignOutAlt className="text-lg" /> Logout
+          <FcSettings className="text-lg" /> Settings
         </button>
       </div>
     </div>

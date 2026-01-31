@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { API_BASE_URL } from "../../apiConfig";
 
 const FacultyMaterials = ({ user, subjects, myMaterials, fetchMyMaterials }) => {
   const [form, setForm] = useState({ title: "", subject: "", file: null });
@@ -16,7 +17,7 @@ const FacultyMaterials = ({ user, subjects, myMaterials, fetchMyMaterials }) => 
     formData.append("material", form.file);
 
     try {
-      await fetch(`http://localhost:5000/api/faculty/upload-material`, { method: "POST", body: formData });
+      await fetch(`${API_BASE_URL}/faculty/upload-material`, { method: "POST", body: formData });
       setForm({ title: "", subject: "", file: null });
       fetchMyMaterials(user._id || user.id);
     } catch (e) { console.error(e); } 
@@ -26,7 +27,7 @@ const FacultyMaterials = ({ user, subjects, myMaterials, fetchMyMaterials }) => 
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this file?")) return;
     try {
-      await fetch(`http://localhost:5000/api/faculty/delete-material/${id}`, { method: "DELETE" });
+      await fetch(`${API_BASE_URL}/faculty/delete-material/${id}`, { method: "DELETE" });
       fetchMyMaterials(user._id || user.id);
     } catch (e) { console.error(e); }
   };

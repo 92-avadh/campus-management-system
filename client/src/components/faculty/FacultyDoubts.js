@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { FaCheckCircle, FaReply } from "react-icons/fa";
+import { API_BASE_URL, BASE_URL } from "../../apiConfig";
 
 // ✅ Accept 'onDoubtResolved' prop
 const FacultyDoubts = ({ onDoubtResolved }) => {
@@ -17,7 +18,7 @@ const FacultyDoubts = ({ onDoubtResolved }) => {
   
     try {
       const res = await fetch(
-        `http://localhost:5000/api/faculty/doubts/${facultyId}`
+        `${API_BASE_URL}/faculty/doubts/${facultyId}`
       );
       const data = await res.json();
       setDoubts(Array.isArray(data) ? data : []);
@@ -38,7 +39,7 @@ const FacultyDoubts = ({ onDoubtResolved }) => {
     if (!answerText.trim()) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/faculty/answer-doubt/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/faculty/answer-doubt/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ answer: answerText })
@@ -105,7 +106,7 @@ const FacultyDoubts = ({ onDoubtResolved }) => {
                  </p>
                  {doubt.file && (
                     <a 
-                      href={`http://localhost:5000/${doubt.file}`} 
+                      href={`${BASE_URL}/${doubt.file.replace(/\\/g, "/")}`}
                       target="_blank" 
                       rel="noreferrer" 
                       className="text-xs text-blue-500 underline mt-2 block font-bold"

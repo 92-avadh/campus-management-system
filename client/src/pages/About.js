@@ -4,36 +4,36 @@ const About = () => {
   // Team Data (Moved from Contact.js)
   const teamMembers = [
     {
-      name: "Arav Patel",
+      name: "Avadh Dhameliya",
       role: "Lead Developer",
-      image: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=200",
-      github: "https://github.com",
-      phone: "+91 98765 00001",
-      email: "arav@sdjic.org"
+      image: "/dev1.jpg",
+      github: "https://github.com/92-avadh",
+      phone: "+91 92651 77693",
+      email: "dhameliyaavadh592@gmail.com"
     },
     {
-      name: "Priya Singh",
+      name: "Ravi Gajera",
       role: "UI/UX Designer",
-      image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200",
-      github: "https://github.com",
-      phone: "+91 98765 00002",
-      email: "priya@sdjic.org"
+      image: "/dev2.jpg",
+      github: "https://github.com/ravigajera-afk",
+      phone: "+91 96386 41139",
+      email: "ravigajera0906@gmail.com"
     },
     {
-      name: "Rohan Shah",
+      name: "Smit Bhingradiya",
       role: "Backend Engineer",
-      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200",
-      github: "https://github.com",
-      phone: "+91 98765 00003",
-      email: "rohan@sdjic.org"
+      image: "/dev3.jpg",
+      github: "https://github.com/Smit1879",
+      phone: "+91 78743 62579",
+      email: "bhingradiyasmit485@gmail.com"
     },
     {
-      name: "Sneha Gupta",
+      name: "Zeel katrodiya",
       role: "Frontend Developer",
-      image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200",
-      github: "https://github.com",
-      phone: "+91 98765 00004",
-      email: "sneha@sdjic.org"
+      image: "/dev4.jpg",
+      github: "https://github.com/zeelkatrodiya",
+      phone: "+91 90816 32716",
+      email: "zeelkatrodiya21@gmail.com"
     }
   ];
 
@@ -121,13 +121,13 @@ const About = () => {
       <section className="py-20 bg-white">
         <div className="container mx-auto px-6 max-w-4xl text-center">
           <div className="mb-8 relative inline-block">
-             <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=200" alt="Principal" className="w-32 h-32 rounded-full object-cover mx-auto shadow-lg" />
+             <img src="/aditibhatt.jpg" alt="Principal" className="w-32 h-32 rounded-full object-cover mx-auto shadow-lg" />
              <div className="absolute bottom-0 right-0 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full">Principal</div>
           </div>
           <blockquote className="text-2xl font-serif italic text-gray-700 mb-6">
             "At SDJIC, education is not just about acquiring degrees; it is about building character. We strive to create an environment where intellect meets empathy."
           </blockquote>
-          <cite className="font-bold text-gray-900 not-italic">- Dr. Rajesh Kumar</cite>
+          <cite className="font-bold text-gray-900 not-italic">- Dr. Aditi Bhatt</cite>
         </div>
       </section>
 

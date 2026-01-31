@@ -51,7 +51,8 @@ const courses = [
     category: "Finance",
     duration: "3 Years",
     level: "Undergraduate",
-    image: "https://images.unsplash.com/photo-1454165833767-027ffea9e778?q=80&w=2070",
+    // ✅ FIXED: New relevant image for Commerce/Accounting
+    image: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?q=80&w=2072", 
     description: "Build a strong foundation in accounting, taxation, and financial management.",
     details: {
       eligibility: "10+2 with Commerce or Math background.",
@@ -76,7 +77,7 @@ const Courses = () => {
   const handleApplyClick = (courseTitle) => {
     setApplyCourseName(courseTitle);
     setIsApplyOpen(true);
-    setSelectedCourse(null); // Close details modal if open
+    setSelectedCourse(null); 
   };
 
   return (
@@ -92,44 +93,44 @@ const Courses = () => {
           />
         </div>
         <div className="relative max-w-7xl mx-auto px-6 text-center">
-          <h1 className="text-5xl md:text-6xl font-black mb-6 tracking-tighter">
+          <h1 className="text-4xl md:text-6xl font-black mb-6 tracking-tighter">
             Academic <span className="text-red-600">Programs</span>
           </h1>
-          <p className="text-gray-400 max-w-2xl mx-auto text-lg">
+          <p className="text-gray-400 max-w-2xl mx-auto text-base md:text-lg">
             Explore our diverse range of undergraduate programs designed to 
             empower your future and build professional excellence.
           </p>
         </div>
       </section>
 
-      {/* Course Listing */}
-      <section className="py-20 max-w-7xl mx-auto px-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+      {/* Course Listing (Responsive Grid) */}
+      <section className="py-12 md:py-20 max-w-7xl mx-auto px-4 md:px-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
           {courses.map((course) => (
             <div 
               key={course.id} 
-              className="group bg-white dark:bg-gray-900 rounded-[2rem] overflow-hidden border border-gray-100 dark:border-gray-800 hover:shadow-2xl transition-all duration-500"
+              className="flex flex-col h-full bg-white dark:bg-gray-900 rounded-[2rem] overflow-hidden border border-gray-100 dark:border-gray-800 hover:shadow-2xl transition-all duration-500"
             >
-              <div className="relative h-64 overflow-hidden">
+              <div className="relative h-56 md:h-64 overflow-hidden shrink-0">
                 <img 
                   src={course.image} 
                   alt={course.title} 
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                 />
-                <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-4 py-1 rounded-full text-xs font-bold text-gray-900 uppercase tracking-widest">
+                <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-gray-900 uppercase tracking-widest shadow-sm">
                   {course.category}
                 </div>
               </div>
               
-              <div className="p-8">
-                <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-3 leading-tight">
+              <div className="p-6 md:p-8 flex flex-col flex-1">
+                <h3 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white mb-3 leading-tight">
                   {course.title}
                 </h3>
-                <p className="text-gray-500 dark:text-gray-400 text-sm mb-6 line-clamp-2">
+                <p className="text-gray-500 dark:text-gray-400 text-sm mb-6 line-clamp-3 flex-1">
                   {course.description}
                 </p>
                 
-                <div className="flex items-center gap-4 mb-8">
+                <div className="flex items-center gap-4 mb-8 mt-auto">
                    <div className="flex flex-col">
                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Duration</span>
                       <span className="text-sm font-bold dark:text-gray-200">{course.duration}</span>
@@ -141,16 +142,16 @@ const Courses = () => {
                    </div>
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex gap-3 mt-auto">
                   <button 
                     onClick={() => setSelectedCourse(course)}
-                    className="flex-1 bg-gray-900 dark:bg-white dark:text-gray-900 text-white py-3 rounded-xl font-bold hover:bg-gray-800 transition-colors"
+                    className="flex-1 bg-gray-900 dark:bg-white dark:text-gray-900 text-white py-3 rounded-xl font-bold text-sm hover:bg-gray-800 transition-colors"
                   >
                     View Details
                   </button>
                   <button 
                     onClick={() => handleApplyClick(course.title)}
-                    className="px-6 bg-red-700 text-white py-3 rounded-xl font-bold hover:bg-red-800 transition-colors"
+                    className="px-6 bg-red-700 text-white py-3 rounded-xl font-bold text-sm hover:bg-red-800 transition-colors"
                   >
                     Apply
                   </button>
@@ -163,23 +164,27 @@ const Courses = () => {
 
       {/* ================= DETAILS MODAL ================= */}
       {selectedCourse && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
-          <div className="bg-white dark:bg-gray-900 w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-[3rem] shadow-2xl relative">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-black/60 backdrop-blur-md">
+          <div className="bg-white dark:bg-gray-900 w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-[2rem] md:rounded-[3rem] shadow-2xl relative scrollbar-hide">
             <button 
               onClick={() => setSelectedCourse(null)}
-              className="absolute top-6 right-6 w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center text-2xl hover:bg-red-100 hover:text-red-600 transition-colors"
+              className="absolute top-4 right-4 z-10 w-10 h-10 md:w-12 md:h-12 bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-full flex items-center justify-center text-2xl hover:bg-red-100 hover:text-red-600 transition-colors shadow-sm"
             >
               ×
             </button>
 
             <div className="grid grid-cols-1 md:grid-cols-2">
-              <div className="h-full">
-                <img src={selectedCourse.image} alt="" className="w-full h-full object-cover" />
+              <div className="h-64 md:h-auto relative">
+                <img 
+                  src={selectedCourse.image} 
+                  alt="" 
+                  className="absolute inset-0 w-full h-full object-cover" 
+                />
               </div>
               
-              <div className="p-10 md:p-12">
+              <div className="p-6 md:p-12">
                 <span className="text-red-600 font-bold uppercase tracking-widest text-xs mb-2 block">Course Overview</span>
-                <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-6 leading-tight">{selectedCourse.title}</h2>
+                <h2 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white mb-6 leading-tight">{selectedCourse.title}</h2>
                 
                 <div className="space-y-6 mb-8">
                   <div>
@@ -195,34 +200,34 @@ const Courses = () => {
 
                   <div>
                     <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase mb-3">Career Opportunities</h4>
-                    <ul className="grid grid-cols-2 gap-2">
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {selectedCourse.details.careers.map((career, i) => (
                         <li key={i} className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 bg-red-600 rounded-full"></span> {career}
+                          <span className="w-1.5 h-1.5 bg-red-600 rounded-full shrink-0"></span> {career}
                         </li>
                       ))}
                     </ul>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4 p-6 bg-gray-50 dark:bg-gray-800/50 rounded-2xl">
+                <div className="grid grid-cols-3 gap-2 md:gap-4 p-4 md:p-6 bg-gray-50 dark:bg-gray-800/50 rounded-2xl">
                   <div>
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Level</span>
-                    <p className="font-semibold text-gray-900 dark:text-gray-100">{selectedCourse.level}</p>
+                    <p className="font-semibold text-gray-900 dark:text-gray-100 text-xs md:text-sm">{selectedCourse.level}</p>
                   </div>
                   <div>
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Eligibility</span>
-                    <p className="font-semibold text-gray-900 dark:text-gray-100 text-[10px]">{selectedCourse.details.eligibility}</p>
+                    <p className="font-semibold text-gray-900 dark:text-gray-100 text-[10px] leading-tight">{selectedCourse.details.eligibility}</p>
                   </div>
                   <div>
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Fees</span>
-                    <p className="font-bold text-red-700 text-sm">{selectedCourse.details.fees}</p>
+                    <p className="font-bold text-red-700 text-xs md:text-sm">{selectedCourse.details.fees}</p>
                   </div>
                 </div>
 
                 <button 
                   onClick={() => handleApplyClick(selectedCourse.title)}
-                  className="w-full mt-8 bg-red-700 text-white py-3 rounded-xl font-bold hover:bg-red-800 transition-colors shadow-lg"
+                  className="w-full mt-8 bg-red-700 text-white py-3.5 rounded-xl font-bold hover:bg-red-800 transition-colors shadow-lg active:scale-95 transform duration-150"
                 >
                   Apply Now
                 </button>
@@ -233,7 +238,7 @@ const Courses = () => {
         </div>
       )}
 
-      {/* ================= APPLY MODAL (Global) ================= */}
+      {/* ================= APPLY MODAL ================= */}
       <ApplyModal 
         isOpen={isApplyOpen} 
         onClose={() => setIsApplyOpen(false)}

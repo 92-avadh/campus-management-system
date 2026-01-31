@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
-
+import { API_BASE_URL } from "../apiConfig";
 const FeePayment = ({ studentId, amount, onPageRefresh }) => {
   const [loading, setLoading] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
@@ -9,7 +9,7 @@ const FeePayment = ({ studentId, amount, onPageRefresh }) => {
   const handleMockPayment = async () => {
     setLoading(true);
     try {
-      const res = await axios.post(`http://localhost:5000/api/payment/mock-verify`, {
+      const res = await axios.post(`${API_BASE_URL}/payment/mock-verify`, {
         studentId,
       });
 

@@ -119,9 +119,6 @@ const Home = () => {
               <h2 className="text-rose-600 text-sm font-black uppercase tracking-[0.3em] mb-4">University Pulse</h2>
               <h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter">Latest News & Events</h3>
             </div>
-            <Link to="/news" className="text-slate-900 font-bold border-b-2 border-rose-600 pb-1 hover:text-rose-600 transition-colors">
-              View Journal →
-            </Link>
           </motion.div>
 
           <motion.div 
@@ -176,7 +173,15 @@ const Home = () => {
               transition={{ duration: 0.8 }}
               className="relative z-10 rounded-[2rem] overflow-hidden border border-white/10 aspect-video"
             >
-              <img src="https://images.unsplash.com/photo-1581093458791-9f3c3900df4b?w=800" alt="Innovation Lab" className="w-full h-full object-cover" />
+              <img 
+                src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&auto=format&fit=crop&q=60" // Reliable Tech/Lab Image
+                alt="Innovation Lab" 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.onerror = null; // Prevent infinite loop
+                  e.target.src = "https://images.unsplash.com/photo-1517420704952-d9f39e95b43e?w=800"; // Fallback Image
+                }}
+              />
             </motion.div>
           </div>
         </div>

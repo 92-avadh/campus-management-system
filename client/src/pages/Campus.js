@@ -12,7 +12,7 @@ const campusImages = [
   {
     id: 2,
     category: "Labs",
-    src: "https://images.unsplash.com/photo-1581092921461-eab62e97a78e?q=80&w=2070",
+    src: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=2070",
     title: "Advanced Robotics Lab",
     desc: "Equipped with latest automation tools for engineering students."
   },
@@ -54,7 +54,8 @@ const campusImages = [
   {
     id: 8,
     category: "Student Life",
-    src: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2070",
+    // ✅ NEW RELIABLE IMAGE (Green Lawn Campus)
+    src: "https://images.unsplash.com/photo-1492538368677-f6e0afe31dcc?q=80&w=2070",
     title: "Green Campus Gardens",
     desc: "Lush green spaces promoting a peaceful environment for study."
   },
@@ -116,6 +117,11 @@ const Campus = () => {
                   src={image.src} 
                   alt={image.title} 
                   className="w-full object-cover group-hover:scale-105 transition-transform duration-700"
+                  // ✅ FAILSAFE: If image breaks, load this default one
+                  onError={(e) => {
+                    e.target.onerror = null; 
+                    e.target.src = "https://images.unsplash.com/photo-1562774053-701939374585?q=80&w=2086"; 
+                  }}
                 />
                 <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
                   {image.category}

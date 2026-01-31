@@ -2,8 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import ThemeToggle from "../components/ThemeToggle";
 import NotificationBell from "../components/NotificationBell";
-import { FaBars, FaTimes } from "react-icons/fa"; // ✅ Icons for mobile menu
-// ✅ 1. Import the dynamic URL helper
+import { FaBars, FaTimes } from "react-icons/fa"; 
 import { API_BASE_URL } from "../apiConfig"; 
 
 // Components
@@ -20,28 +19,36 @@ const StudentDashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [resolvedQueries, setResolvedQueries] = useState(0);
+  const [resolvedQueries, setResolvedQueries] = useState(0); // Displays UNREAD count
+  const [totalResolved, setTotalResolved] = useState(0);     // Stores TOTAL count
 
-  // ✅ 2. Mobile Menu State
+  // Mobile Menu State
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Data States
   const [attendance, setAttendance] = useState([]);
   const [notices, setNotices] = useState([]);
 
-  // ✅ 3. Persist Active Tab
+  // Active Tab Logic
   const [activeTab, setActiveTab] = useState(() => {
     return sessionStorage.getItem("activeTab") || "dashboard";
   });
 
+  // ✅ UPDATED: Handle Tab Change & Clear Notifications
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
     sessionStorage.setItem("activeTab", tabId);
-    setIsSidebarOpen(false); // Close menu on mobile after selection
+    setIsSidebarOpen(false);
+
+    // ✅ FIX: If user clicks 'doubts', mark all current queries as SEEN
+    if (tabId === "doubts" && user) {
+       localStorage.setItem(`seen_resolved_${user._id || user.id}`, totalResolved);
+       setResolvedQueries(0); // Immediately clear the badge
+    }
   };
 
   /* =====================
-     API CALLS (STABLE)
+     API CALLS
   ====================== */
   const fetchAttendance = useCallback(async (id) => {
     try {
@@ -59,15 +66,25 @@ const StudentDashboard = () => {
     } catch (err) { console.error(err); }
   }, []);
 
-  // ✅ FIX: Removed [user] dependency to stop the Infinite Loop
+  // ✅ FIX: Calculate UNREAD count based on LocalStorage
   const fetchResolvedCount = useCallback(async (studentId) => {
     if (!studentId) return;
     try {
       const res = await fetch(`${API_BASE_URL}/student/my-doubts/${studentId}`);
       if (!res.ok) return;
       const data = await res.json();
-      const count = Array.isArray(data) ? data.filter(q => q.status === "Resolved").length : 0;
-      setResolvedQueries(count);
+      
+      // 1. Get Total Resolved from DB
+      const currentTotal = Array.isArray(data) ? data.filter(q => q.status === "Resolved").length : 0;
+      setTotalResolved(currentTotal);
+
+      // 2. Get "Seen" count from LocalStorage
+      const seenCount = parseInt(localStorage.getItem(`seen_resolved_${studentId}`) || "0");
+
+      // 3. Calculate Unread (Total - Seen)
+      const unread = Math.max(0, currentTotal - seenCount);
+      setResolvedQueries(unread);
+
     } catch (err) { }
   }, []);
 
@@ -94,7 +111,6 @@ const StudentDashboard = () => {
           fetchResolvedCount(userId)
         ]);
 
-        // ✅ Polling every 60s
         intervalId = setInterval(() => {
           fetchResolvedCount(userId);
         }, 60000);
@@ -118,6 +134,11 @@ const StudentDashboard = () => {
     navigate("/login");
   };
 
+  const handleFeePaymentSuccess = () => {
+    alert("Payment Recorded! Refreshing...");
+    window.location.reload();
+  };
+
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
       <div className="w-16 h-16 border-4 border-rose-600 border-t-transparent rounded-full animate-spin"></div>
@@ -129,7 +150,6 @@ const StudentDashboard = () => {
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900 font-sans relative">
       
-      {/* ✅ 4. MOBILE OVERLAY */}
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 z-40 bg-black/50 md:hidden backdrop-blur-sm transition-opacity" 
@@ -137,13 +157,11 @@ const StudentDashboard = () => {
         ></div>
       )}
 
-      {/* ✅ 5. SIDEBAR WRAPPER (Z-50 Fixes Cut-off Issue) */}
       <div className={`
         fixed inset-y-0 left-0 z-50 w-80 bg-white dark:bg-gray-800 shadow-2xl transform transition-transform duration-300 
         md:relative md:translate-x-0 
         ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
       `}>
-         {/* Mobile Close Button */}
          <div className="md:hidden absolute top-4 right-4 z-50">
              <button onClick={() => setIsSidebarOpen(false)} className="text-gray-500 hover:text-rose-500 p-2">
                <FaTimes size={24} />
@@ -158,14 +176,10 @@ const StudentDashboard = () => {
          />
       </div>
 
-      {/* MAIN CONTENT */}
       <div className="flex-1 flex flex-col h-full overflow-y-auto relative [&::-webkit-scrollbar]:hidden">
         
-        {/* HEADER */}
         <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md sticky top-0 z-40 border-b border-gray-200 dark:border-gray-700 px-4 md:px-8 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
-            
-            {/* ✅ Hamburger Toggle */}
             <button 
               onClick={() => setIsSidebarOpen(true)} 
               className="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
@@ -183,20 +197,17 @@ const StudentDashboard = () => {
           <div className="flex items-center gap-3 md:gap-4">
              <NotificationBell studentId={user.id || user._id} />
              <ThemeToggle />
-             {/* Desktop Logout */}
              <button onClick={handleLogout} className="hidden md:block bg-rose-50 text-rose-600 px-5 py-2.5 rounded-xl text-xs font-bold border border-rose-100">LOGOUT</button>
-             {/* Mobile Logout Icon */}
              <button onClick={handleLogout} className="md:hidden text-rose-600 p-2">
                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
              </button>
           </div>
         </header>
 
-        {/* PAGE CONTENT */}
         <div className="p-4 md:p-8 pb-20">
             {activeTab === "dashboard" && <StudentOverview user={user} attendance={attendance} notices={notices} />}
             {activeTab === "notices" && <StudentNotices notices={notices} />}
-            {activeTab === "fees" && <StudentFees user={user} />}
+            {activeTab === "fees" && <StudentFees user={user} handlePaymentSuccess={handleFeePaymentSuccess} />}
             {activeTab === "courses" && <StudentCourses user={user} />}
             {activeTab === "attendance" && <StudentAttendance user={user} attendance={attendance} />}
             {activeTab === "settings" && <StudentSettings user={user} />}

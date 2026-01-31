@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 // ✅ Added icons for file upload
 import { FaPaperPlane, FaFileUpload, FaTimes, FaHistory } from "react-icons/fa";
+import { API_BASE_URL, BASE_URL } from "../../apiConfig"; 
 
 const StudentDoubts = ({ user }) => {
   const [activeTab, setActiveTab] = useState("ask");
@@ -15,35 +16,37 @@ const StudentDoubts = ({ user }) => {
     question: ""
   });
 
+  // ✅ Helper to construct the correct file URL using BASE_URL
+  const getFileUrl = (filePath) => {
+    if (!filePath) return "#";
+    // Replace Windows backslashes with forward slashes
+    const cleanPath = filePath.replace(/\\/g, "/");
+    // Prepend the server's base URL (e.g., http://192.168.1.5:5000/uploads/file.pdf)
+    return `${BASE_URL}/${cleanPath}`;
+  };
+
   // ✅ FETCH DATA - ROBUST FIX
   useEffect(() => {
     const fetchData = async () => {
       try {
         if (!user) return;
 
-        // ✅ FIX: Default to "All" if department is missing
-        // This ensures the API is ALWAYS called, even if profile is incomplete
         let departmentToSearch = user.department || user.course || "All";
         departmentToSearch = departmentToSearch.trim().toUpperCase();
         
         console.log("Searching for department:", departmentToSearch);
 
-        const apiUrl = `http://localhost:5000/api/student/faculty-list/${encodeURIComponent(departmentToSearch)}`;
+        const apiUrl = `${API_BASE_URL}/student/faculty-list/${encodeURIComponent(departmentToSearch)}`;
         
-        // ✅ Fetch faculty list
         const facRes = await fetch(apiUrl);
         if (facRes.ok) {
             const facData = await facRes.json();
             setFacultyList(facData);
-            console.log("Faculty loaded:", facData.length);
-        } else {
-            console.error("Failed to load faculty");
         }
 
-        // ✅ Fetch student's doubts
         const studentId = user._id || user.id;
         if (studentId) {
-            const doubtRes = await fetch(`http://localhost:5000/api/student/my-doubts/${studentId}`);
+            const doubtRes = await fetch(`${API_BASE_URL}/student/my-doubts/${studentId}`);
             if (doubtRes.ok) {
                 setMyDoubts(await doubtRes.json());
             }
@@ -78,7 +81,7 @@ const StudentDoubts = ({ user }) => {
         data.append("file", selectedFile);
       }
 
-      const res = await fetch(`http://localhost:5000/api/student/ask-doubt`, {
+      const res = await fetch(`${API_BASE_URL}/student/ask-doubt`, {
         method: "POST",
         body: data,
       });
@@ -92,7 +95,7 @@ const StudentDoubts = ({ user }) => {
         setActiveTab("history");
         
         // Refresh doubts list
-        const doubtRes = await fetch(`http://localhost:5000/api/student/my-doubts/${user._id || user.id}`);
+        const doubtRes = await fetch(`${API_BASE_URL}/student/my-doubts/${user._id || user.id}`);
         setMyDoubts(await doubtRes.json());
       } else {
         alert("❌ " + result.message);
@@ -144,22 +147,12 @@ const StudentDoubts = ({ user }) => {
                   className="w-full p-4 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 dark:text-white font-bold text-sm focus:ring-4 focus:ring-indigo-500/10 outline-none transition"
                 >
                   <option value="">-- Choose Faculty --</option>
-                  {facultyList.length === 0 ? (
-                    <option disabled>No faculty available</option>
-                  ) : (
-                    facultyList.map(fac => (
-                      <option key={fac._id} value={fac._id}>
-                        {fac.name} ({fac.department})
-                      </option>
-                    ))
-                  )}
+                  {facultyList.map(fac => (
+                    <option key={fac._id} value={fac._id}>
+                      {fac.name} ({fac.department})
+                    </option>
+                  ))}
                 </select>
-                <p className="text-xs text-gray-400 mt-1">
-                  {facultyList.length > 0 
-                    ? `${facultyList.length} faculty available` 
-                    : `Searching...`
-                  }
-                </p>
               </div>
 
               <div>
@@ -186,7 +179,6 @@ const StudentDoubts = ({ user }) => {
               />
             </div>
 
-            {/* ✅ OPTIONAL FILE UPLOAD UI */}
             <div>
               <label className="block text-xs font-bold text-gray-500 mb-2 ml-1 uppercase tracking-wider">Attachment (Optional)</label>
               <div className="flex items-center gap-4">
@@ -216,7 +208,7 @@ const StudentDoubts = ({ user }) => {
                 disabled={loading || facultyList.length === 0}
                 className="px-10 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 dark:shadow-none transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? "Sending..." : facultyList.length === 0 ? "No Faculty Available" : "Submit Doubt"}
+                {loading ? "Sending..." : "Submit Doubt"}
               </button>
             </div>
           </form>
@@ -233,7 +225,6 @@ const StudentDoubts = ({ user }) => {
           ) : (
             myDoubts.map((doubt) => (
               <div key={doubt._id} className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
-                {/* Header Section */}
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex gap-3 items-center">
                     <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider ${
@@ -252,7 +243,6 @@ const StudentDoubts = ({ user }) => {
                   </span>
                 </div>
 
-                {/* Question Section */}
                 <div className="mb-4">
                   <h4 className="font-bold text-gray-900 dark:text-white text-lg mb-1">{doubt.subject}</h4>
                   <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
@@ -260,11 +250,11 @@ const StudentDoubts = ({ user }) => {
                   </p>
                 </div>
 
-                {/* ✅ File attachment link */}
+                {/* ✅ FIXED: Use getFileUrl(doubt.file) instead of direct path */}
                 {doubt.file && (
                   <div className="mb-4">
                     <a 
-                      href={`http://localhost:5000/api/${doubt.file}`} 
+                      href={getFileUrl(doubt.file)} 
                       target="_blank" 
                       rel="noreferrer"
                       className="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1"
@@ -274,7 +264,6 @@ const StudentDoubts = ({ user }) => {
                   </div>
                 )}
 
-                {/* Answer Section */}
                 {doubt.status === "Resolved" && (
                   <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                     <div className="flex gap-3">
