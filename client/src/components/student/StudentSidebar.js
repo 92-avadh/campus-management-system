@@ -1,88 +1,109 @@
 import React from "react";
+import { 
+  FaHome, FaUserGraduate, FaClipboardList, FaBullhorn, 
+  FaBook, FaQuestionCircle, FaCog, FaSignOutAlt 
+} from "react-icons/fa";
+// ✅ 1. Import BASE_URL (the root server URL without /api)
+import { BASE_URL } from "../../apiConfig";
 
-const StudentSidebar = ({ user, activeTab, setActiveTab }) => {
-  // ✅ REORDERED MENU ITEMS
+const StudentSidebar = ({ user, activeTab, setActiveTab, handleLogout, resolvedQueries }) => {
   const menuItems = [
-    { id: "dashboard", label: "Overview", icon: "🏠" },
-    { id: "notices", label: "View Notices", icon: "📢" }, // New
-    { id: "courses", label: "My Academics", icon: "📚" },
-    { id: "attendance", label: "Attendance", icon: "📷" },
-    { id: "doubts", label: "Ask Doubts", icon: "❓" },
-    { id: "fees", label: "Tuition & Fees", icon: "💳" }  // Moved to Last
+    { id: "dashboard", label: "Dashboard", icon: <FaHome /> },
+    { id: "attendance", label: "Attendance", icon: <FaUserGraduate /> },
+    { id: "courses", label: "My Courses", icon: <FaClipboardList /> },
+    { id: "notices", label: "Notices", icon: <FaBullhorn /> },
+    { id: "fees", label: "Fee Payment", icon: <FaBook /> },
+    { id: "doubts", label: "Academic Doubts", icon: <FaQuestionCircle /> },
   ];
 
-  // Helper to format image URL
-  const getProfileImage = () => {
-    if (!user.photo) return null;
-    const cleanPath = user.photo.replace(/\\/g, "/");
-    return `http://localhost:5000/${cleanPath}`;
+  // ✅ 2. Helper to get the correct photo URL for Mobile & PC
+  const getPhotoUrl = (photoPath) => {
+    if (!photoPath) return "https://cdn-icons-png.flaticon.com/512/3135/3135715.png";
+    
+    // If it's already a full web link, use it
+    if (photoPath.startsWith("http")) return photoPath;
+
+    // Convert Windows backslashes to forward slashes
+    const cleanPath = photoPath.replace(/\\/g, "/");
+    
+    // Prepend the Server IP (e.g., http://192.168.1.5:5000/uploads/photo.jpg)
+    return `${BASE_URL}/${cleanPath}`;
   };
 
   return (
-    <aside className="h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shadow-2xl relative overflow-hidden">
+    <div className="h-full flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-colors duration-300">
       
-      {/* 1. PROFILE CARD */}
-      <div className="p-6">
-        <div className="relative overflow-hidden bg-gradient-to-br from-rose-500 to-red-600 rounded-2xl p-6 text-white shadow-lg shadow-rose-500/30 flex items-center gap-4">
-          <div className="absolute top-0 right-0 -mt-4 -mr-4 w-20 h-20 bg-white/20 rounded-full blur-2xl"></div>
-          
-          {/* ✅ RESTORED PHOTO LOGIC */}
-          <div className="relative z-10 w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center overflow-hidden border border-white/10 shadow-sm shrink-0">
-            {user.photo ? (
-              <img 
-                src={getProfileImage()} 
-                alt="Profile" 
-                className="w-full h-full object-cover"
-                onError={(e) => { e.target.style.display = 'none'; }} 
-              />
-            ) : (
-              <span className="text-xl font-black">{user.name.charAt(0)}</span>
-            )}
+      {/* PROFILE SECTION */}
+      <div className="p-8 border-b border-gray-100 dark:border-gray-700 flex flex-col items-center text-center">
+        <div className="relative mb-4 group">
+          <div className="w-24 h-24 rounded-full p-1 bg-gradient-to-tr from-blue-500 to-indigo-500 shadow-lg shadow-blue-500/30">
+            {/* ✅ 3. Updated Image Source */}
+            <img 
+              src={getPhotoUrl(user.photo)} 
+              alt="Profile" 
+              className="w-full h-full rounded-full object-cover border-4 border-white dark:border-gray-800 bg-white"
+              onError={(e) => {
+                e.target.onerror = null; 
+                e.target.src = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png";
+              }}
+            />
           </div>
-
-          <div className="relative z-10">
-            <h2 className="font-bold text-sm leading-tight">{user.name}</h2>
-            <p className="text-[10px] text-rose-100 font-medium opacity-90">{user.course}</p>
-          </div>
+          <div className="absolute bottom-1 right-1 w-6 h-6 bg-emerald-500 border-4 border-white dark:border-gray-800 rounded-full"></div>
         </div>
+        
+        {/* User Info - Optimized for Mobile spacing */}
+        <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight mb-1 truncate w-full px-2">
+          {user.name}
+        </h3>
+        <p className="text-[10px] font-bold text-blue-500 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-full uppercase tracking-wider inline-block">
+          {user.course} Student
+        </p>
       </div>
 
-      {/* 2. NAVIGATION MENU */}
-      <nav className="flex-1 px-4 space-y-3 overflow-y-auto [&::-webkit-scrollbar]:hidden">
-        <p className="px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Menu</p>
+      {/* MENU */}
+      <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-2 [&::-webkit-scrollbar]:hidden">
         {menuItems.map((item) => (
           <button
             key={item.id}
             onClick={() => setActiveTab(item.id)}
-            className={`w-full text-left px-5 py-3.5 rounded-xl transition-all duration-300 flex items-center gap-4 group relative ${
+            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 group relative ${
               activeTab === item.id 
-                ? "bg-rose-600 text-white shadow-md shadow-rose-200 dark:shadow-none translate-x-1" 
-                : "text-gray-500 dark:text-gray-400 hover:bg-rose-50 dark:hover:bg-gray-700/50 hover:text-rose-600"
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30 translate-x-1" 
+                : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-blue-600 dark:hover:text-blue-400"
             }`}
           >
-            <span className={`text-xl transition-transform duration-300 ${activeTab === item.id ? "scale-110" : "group-hover:scale-110"}`}>
+            <span className={`text-xl ${activeTab === item.id ? "animate-pulse" : ""}`}>
               {item.icon}
             </span>
-            <span className="font-bold text-sm">{item.label}</span>
+            <span className="font-bold text-sm tracking-wide">{item.label}</span>
+            
+            {item.id === "doubts" && resolvedQueries > 0 && (
+               <span className="absolute right-4 bg-emerald-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+                 {resolvedQueries}
+               </span>
+            )}
           </button>
         ))}
       </nav>
 
-      {/* 3. SETTINGS BUTTON */}
-      <div className="p-6 border-t border-gray-100 dark:border-gray-700">
+      {/* FOOTER */}
+      <div className="p-4 border-t border-gray-100 dark:border-gray-700 space-y-2">
         <button 
           onClick={() => setActiveTab("settings")}
-          className="w-full flex items-center justify-center gap-3 p-4 rounded-xl transition-all border bg-gray-50 hover:bg-gray-100 dark:bg-gray-700/30 dark:hover:bg-gray-600 border-gray-200 dark:border-gray-600"
+          className={`w-full flex items-center gap-3 px-5 py-3 rounded-xl transition-all font-bold text-xs uppercase tracking-wider ${
+            activeTab === "settings" ? "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+          }`}
         >
-          <span className="w-8 h-8 rounded-full flex items-center justify-center bg-white dark:bg-gray-800 text-gray-500 shadow-sm">⚙️</span>
-          <div className="text-left">
-            <p className="text-xs font-bold text-gray-800 dark:text-white">Settings</p>
-            <p className="text-[10px] text-gray-400">Profile & Security</p>
-          </div>
+          <FaCog className="text-lg" /> Settings
+        </button>
+        <button 
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-5 py-3 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/10 transition-all font-bold text-xs uppercase tracking-wider"
+        >
+          <FaSignOutAlt className="text-lg" /> Logout
         </button>
       </div>
-
-    </aside>
+    </div>
   );
 };
 
