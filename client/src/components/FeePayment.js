@@ -9,7 +9,7 @@ const FeePayment = ({ studentId, amount, onPageRefresh }) => {
   const handleMockPayment = async () => {
     setLoading(true);
     try {
-      const res = await axios.post("http://localhost:5000/api/payment/mock-verify", {
+      const res = await axios.post(`http://localhost:5000/api/payment/mock-verify`, {
         studentId,
       });
 

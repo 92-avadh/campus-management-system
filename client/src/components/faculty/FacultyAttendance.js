@@ -11,7 +11,7 @@ const FacultyAttendance = ({ user, subjects }) => {
 
   const generate = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/faculty/generate-qr", {
+      const res = await fetch(`http://localhost:5000/api/faculty/generate-qr`, {
         method: "POST", headers: {"Content-Type":"application/json"},
         body: JSON.stringify({ course: user.department, subject, facultyId: user._id || user.id })
       });

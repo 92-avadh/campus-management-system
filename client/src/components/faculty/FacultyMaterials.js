@@ -16,7 +16,7 @@ const FacultyMaterials = ({ user, subjects, myMaterials, fetchMyMaterials }) => 
     formData.append("material", form.file);
 
     try {
-      await fetch("http://localhost:5000/api/faculty/upload-material", { method: "POST", body: formData });
+      await fetch(`http://localhost:5000/api/faculty/upload-material`, { method: "POST", body: formData });
       setForm({ title: "", subject: "", file: null });
       fetchMyMaterials(user._id || user.id);
     } catch (e) { console.error(e); } 

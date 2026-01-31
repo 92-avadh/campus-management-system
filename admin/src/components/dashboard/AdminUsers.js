@@ -11,17 +11,17 @@ const AdminUsers = () => {
     name: "",
     email: "",
     phone: "",
-    role: "faculty", // Default to faculty
+    role: "faculty", 
     department: ""
   });
 
-  // ✅ 1. FETCH USERS (Corrected API Endpoint)
+  // ✅ FIX: FETCH USERS (Matches /users in adminRoutes.js)
   const fetchUsers = async () => {
     try {
-      // Changed from '/users' to '/all-users' to match adminRoutes.js
-      const res = await fetch("http://localhost:5000/api/admin/all-users");
+      const res = await fetch(`http://localhost:5000/api/admin/users`);
       const data = await res.json();
-      setUsers(data);
+      // Ensure we set an array even if the request fails
+      setUsers(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Error fetching users:", err);
     }
@@ -31,12 +31,11 @@ const AdminUsers = () => {
     fetchUsers();
   }, []);
 
-  // ✅ 2. DELETE USER (Remove Access)
+  // ✅ FIX: DELETE USER (Matches /delete-user/:id in adminRoutes.js)
   const handleDelete = async (id) => {
     if (!window.confirm("⚠️ Are you sure? This will remove the user's access permanently.")) return;
     try {
-      // Changed from '/user/${id}' to '/remove-user/${id}' to match adminRoutes.js
-      const res = await fetch(`http://localhost:5000/api/admin/remove-user/${id}`, {
+      const res = await fetch(`http://localhost:5000/api/admin/delete-user/${id}`, {
         method: "DELETE",
       });
       if (res.ok) {
@@ -50,13 +49,13 @@ const AdminUsers = () => {
     }
   };
 
-  // ✅ 3. ADD NEW USER
+  // ✅ ADD NEW USER (Matches /add-user in updated adminRoutes.js)
   const handleAddUser = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:5000/api/admin/add-user", {
+      const res = await fetch(`http://localhost:5000/api/admin/add-user`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -65,7 +64,7 @@ const AdminUsers = () => {
       const data = await res.json();
 
       if (res.ok) {
-        alert("✅ User added! Credentials sent via Email.");
+        alert("✅ User added successfully!");
         setShowModal(false);
         setFormData({ name: "", email: "", phone: "", role: "faculty", department: "" });
         fetchUsers();
@@ -110,7 +109,6 @@ const AdminUsers = () => {
             ))}
             </div>
 
-            {/* ✅ ADD USER BUTTON */}
             <button 
                 onClick={() => setShowModal(true)}
                 className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-200 dark:shadow-none transition-all flex items-center gap-2"
@@ -171,47 +169,31 @@ const AdminUsers = () => {
         </table>
       </div>
 
-      {/* ✅ ADD USER MODAL */}
+      {/* MODAL (Unchanged UI) */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-3xl shadow-2xl p-8 border dark:border-gray-700 transform transition-all scale-100">
+          <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-3xl shadow-2xl p-8 border dark:border-gray-700">
             <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-2">Add New User</h3>
             <p className="text-sm text-gray-500 mb-6">Create credentials for a new Faculty or Admin.</p>
             
             <form onSubmit={handleAddUser} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1 ml-1">Full Name</label>
-                <input 
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-700 border-none font-bold text-sm focus:ring-2 focus:ring-indigo-500 dark:text-white"
-                  placeholder="e.g. Dr. Sarah Smith"
-                />
+                <input required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-700 border-none font-bold text-sm focus:ring-2 focus:ring-indigo-500 dark:text-white" placeholder="e.g. Dr. Sarah Smith" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label className="block text-xs font-bold text-gray-500 mb-1 ml-1">Role</label>
-                    <select
-                    value={formData.role}
-                    onChange={(e) => setFormData({...formData, role: e.target.value})}
-                    className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-700 border-none font-bold text-sm focus:ring-2 focus:ring-indigo-500 dark:text-white"
-                    >
+                    <select value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-700 border-none font-bold text-sm focus:ring-2 focus:ring-indigo-500 dark:text-white">
                     <option value="faculty">Faculty</option>
                     <option value="admin">Admin</option>
                     </select>
                 </div>
-                {/* Show Department only if Faculty */}
                 {formData.role === "faculty" && (
                     <div>
                         <label className="block text-xs font-bold text-gray-500 mb-1 ml-1">Department</label>
-                        <select
-                        required
-                        value={formData.department}
-                        onChange={(e) => setFormData({...formData, department: e.target.value})}
-                        className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-700 border-none font-bold text-sm focus:ring-2 focus:ring-indigo-500 dark:text-white"
-                        >
+                        <select required value={formData.department} onChange={(e) => setFormData({...formData, department: e.target.value})} className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-700 border-none font-bold text-sm focus:ring-2 focus:ring-indigo-500 dark:text-white">
                         <option value="">Select Dept</option>
                         <option value="BCA">BCA</option>
                         <option value="BBA">BBA</option>
@@ -223,40 +205,17 @@ const AdminUsers = () => {
 
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1 ml-1">Email (Login ID)</label>
-                <input 
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-700 border-none font-bold text-sm focus:ring-2 focus:ring-indigo-500 dark:text-white"
-                  placeholder="sarah@college.edu"
-                />
+                <input type="email" required value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-700 border-none font-bold text-sm focus:ring-2 focus:ring-indigo-500 dark:text-white" placeholder="sarah@college.edu" />
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1 ml-1">Phone Number</label>
-                <input 
-                  required
-                  value={formData.phone}
-                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                  className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-700 border-none font-bold text-sm focus:ring-2 focus:ring-indigo-500 dark:text-white"
-                  placeholder="9876543210"
-                />
+                <input required value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-700 border-none font-bold text-sm focus:ring-2 focus:ring-indigo-500 dark:text-white" placeholder="9876543210" />
               </div>
 
               <div className="flex gap-3 pt-4">
-                <button 
-                  type="button" 
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={loading}
-                  className="flex-1 py-3 rounded-xl font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-none transition disabled:opacity-50"
-                >
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition">Cancel</button>
+                <button type="submit" disabled={loading} className="flex-1 py-3 rounded-xl font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-none transition">
                   {loading ? "Creating..." : "Create User"}
                 </button>
               </div>

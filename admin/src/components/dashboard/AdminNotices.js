@@ -14,7 +14,7 @@ const AdminNotices = () => {
   // 1. Fetch Notices
   const fetchNotices = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/admin/notices");
+      const res = await fetch(`http://localhost:5000/api/admin/notices`);
       const data = await res.json();
       setNotices(data);
     } catch (err) {
@@ -36,7 +36,7 @@ const AdminNotices = () => {
     
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/admin/add-notice", {
+      const res = await fetch(`http://localhost:5000/api/admin/add-notice`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

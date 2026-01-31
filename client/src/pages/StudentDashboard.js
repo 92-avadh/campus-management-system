@@ -11,7 +11,7 @@ import StudentCourses from "../components/student/StudentCourses";
 import StudentAttendance from "../components/student/StudentAttendance";
 import StudentSettings from "../components/student/StudentSettings";
 import StudentDoubts from "../components/student/StudentDoubts"; 
-import StudentNotices from "../components/student/StudentNotices"; // ✅ IMPORTED
+import StudentNotices from "../components/student/StudentNotices"; 
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -76,7 +76,8 @@ const StudentDashboard = () => {
       </div>
 
       {/* MAIN CONTENT */}
-      <div className="flex-1 flex flex-col h-full overflow-y-auto relative">
+      {/* ✅ ADDED: [&::-webkit-scrollbar]:hidden to hide scrollbar visuals */}
+      <div className="flex-1 flex flex-col h-full overflow-y-auto relative [&::-webkit-scrollbar]:hidden">
         
         {/* HEADER */}
         <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md sticky top-0 z-40 border-b border-gray-200 dark:border-gray-700 px-4 md:px-8 py-4 flex justify-between items-center shadow-sm">
@@ -116,7 +117,7 @@ const StudentDashboard = () => {
         {/* PAGE CONTENT */}
         <div className="p-4 md:p-8 pb-20">
             {activeTab === "dashboard" && <StudentOverview user={user} />}
-            {activeTab === "notices" && <StudentNotices />} {/* ✅ RENDER COMPONENT */}
+            {activeTab === "notices" && <StudentNotices />}
             {activeTab === "fees" && <StudentFees user={user} handlePaymentSuccess={handleFeePaymentSuccess} />}
             {activeTab === "courses" && <StudentCourses user={user} />}
             {activeTab === "attendance" && <StudentAttendance user={user} />}

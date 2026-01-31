@@ -6,7 +6,7 @@ const FacultySidebar = ({ user, activeTab, setActiveTab, handleLogout }) => {
     { id: "attendance", label: "Attendance", icon: "📷" },
     { id: "notices", label: "Notices", icon: "📢" },
     { id: "material", label: "Materials", icon: "📚" },
-    { id: "doubts", label: "Student Queries", icon: "❓" }
+    { id: "queries", label: "Student Queries", icon: "❓" }
   ];
 
   return (

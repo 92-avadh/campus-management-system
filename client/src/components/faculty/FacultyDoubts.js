@@ -61,8 +61,8 @@ const FacultyDoubts = () => {
   if (loading) return <div className="p-8 text-center text-gray-500">Loading queries...</div>;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      
+ <div className="max-w-6xl mx-auto space-y-8">
+
       {/* HEADER */}
       <div>
         <h2 className="text-3xl font-black text-gray-900 dark:text-white">Student Queries</h2>

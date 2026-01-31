@@ -5,11 +5,32 @@ const AdminOverview = ({ stats }) => {
     <div className="animate-in fade-in duration-500">
       <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-8 tracking-tight">Overview</h2>
       
+      {/* ✅ Updated Grid with correct icons and verified data keys */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-        <StatCard title="Total Students" count={stats.studentCount || 0} color="bg-blue-500" icon="🎓" />
-        <StatCard title="Total Faculty" count={stats.facultyCount || 0} color="bg-purple-500" icon="👨‍🏫" />
-        <StatCard title="Pending Applications" count={stats.pendingApps || 0} color="bg-orange-500" icon="⏳" />
-        <StatCard title="Courses Active" count={stats.courseCount || 0} color="bg-emerald-500" icon="📚" />
+        <StatCard 
+          title="Total Students" 
+          count={stats.students || 0} 
+          color="bg-blue-500" 
+          icon="🎓" 
+        />
+        <StatCard 
+          title="Total Faculty" 
+          count={stats.faculty || 0} 
+          color="bg-purple-500" 
+          icon="👨‍🏫" 
+        />
+        <StatCard 
+          title="Pending Applications" 
+          count={stats.applications || 0} 
+          color="bg-orange-500" 
+          icon="⏳" 
+        />
+        <StatCard 
+          title="Courses Active" 
+          count={stats.courses || 0} 
+          color="bg-emerald-500" 
+          icon="📚" 
+        />
       </div>
     </div>
   );

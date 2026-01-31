@@ -7,7 +7,7 @@ const AdminApplications = () => {
   // Fetch pending applications
   const fetchApplications = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/admin/applications");
+      const res = await fetch(`http://localhost:5000/api/admin/applications`);
       const data = await res.json();
       setApplications(data);
     } catch (err) { 

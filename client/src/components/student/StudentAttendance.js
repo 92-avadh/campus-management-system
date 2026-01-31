@@ -18,7 +18,7 @@ const StudentAttendance = ({ user }) => {
     if (result) {
       setCamera(false);
       try {
-        const res = await fetch("http://localhost:5000/api/student/mark-attendance", {
+        const res = await fetch(`http://localhost:5000/api/student/mark-attendance`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ studentId: user.id || user._id, qrData: result?.text })
         });

@@ -14,7 +14,7 @@ const FacultyNotices = () => {
   // 1. Fetch Notices
   const fetchNotices = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/faculty/notices");
+      const res = await fetch(`http://localhost:5000/api/faculty/notices`);
       const data = await res.json();
       setNotices(data);
     } catch (err) {
@@ -36,7 +36,7 @@ const FacultyNotices = () => {
     
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/faculty/add-notice", {
+      const res = await fetch(`http://localhost:5000/api/faculty/add-notice`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // ✅ SEND BOTH NAME (for Notice) AND ID (for Notification)

@@ -13,14 +13,23 @@ const Attendance = require("../models/Attendance");
 const Query = require("../models/Query"); 
 const Notice = require("../models/Notice"); 
 
+// --- EMAIL CONFIGURATION ---
 const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
 });
+
+// --- MULTER CONFIGURATION FOR FILE UPLOADS ---
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, "uploads/"),
-    filename: (req, file, cb) => cb(null, `${file.fieldname}-${Date.now()}${path.extname(file.originalname)}`)
+    destination: (req, file, cb) => {
+        // You can separate folders for different types of uploads
+        cb(null, "uploads/"); 
+    },
+    filename: (req, file, cb) => {
+        cb(null, `${file.fieldname}-${Date.now()}${path.extname(file.originalname)}`);
+    }
 });
+
 const upload = multer({ storage });
 
 /* =========================================
@@ -157,34 +166,61 @@ router.get("/notifications/:studentId", async (req, res) => {
 });
 
 /* =========================================
-   7. GET FACULTY LIST
+   7. GET FACULTY LIST - ✅ FIXED WITH BETTER MATCHING
 ========================================= */
 router.get("/faculty-list/:department", async (req, res) => {
   try {
-    const dept = req.params.department.trim();
+    // ✅ Normalize and trim the department parameter
+    const dept = req.params.department.trim().toUpperCase();
+    
+    console.log("🔍 Faculty Search - Department:", dept);
+    
+    // ✅ IMPROVED: Use flexible regex that handles variations
+    // This will match "BCA", " BCA ", "bca", etc.
     const faculty = await User.find({
       role: "faculty",
-      department: { $regex: new RegExp(`^${dept}$`, "i") }
+      department: { $regex: new RegExp(dept, "i") } // ✅ Changed from ^${dept}$ to just dept for more flexible matching
     }).select("name _id department");
     
+    console.log(`✅ Found ${faculty.length} faculty members`);
+    if (faculty.length > 0) {
+      faculty.forEach(f => {
+        console.log(`  - ${f.name} (${f.department}) - ID: ${f._id}`);
+      });
+    }
+    
     res.json(faculty);
-  } catch (err) {
-    res.status(500).json({ message: "Error fetching faculty" });
+  } catch (err) { 
+    console.error("❌ Faculty list error:", err);
+    res.status(500).json({ message: "Error fetching faculty" }); 
   }
 });
 
 /* =========================================
-   8. ASK A DOUBT
+   8. ASK A DOUBT (WITH OPTIONAL FILE UPLOAD)
 ========================================= */
-router.post("/ask-doubt", async (req, res) => {
+// ✅ FIXED: Now uses upload.single("file") to handle optional attachments
+router.post("/ask-doubt", upload.single("file"), async (req, res) => {
   try {
     const { studentId, facultyId, subject, question, course, department, studentName } = req.body;
+    
     const newQuery = new Query({
-      student: studentId, studentName, faculty: facultyId, course, department, subject, question
+      student: studentId, 
+      studentName, 
+      faculty: facultyId, 
+      course, 
+      department, 
+      subject, 
+      question,
+      file: req.file ? req.file.path : null // ✅ Optional file path saved here
     });
+
     await newQuery.save();
     res.json({ success: true, message: "Doubt sent to faculty!" });
-  } catch (err) { res.status(500).json({ success: false, message: "Failed to send doubt" }); }
+  } catch (err) { 
+    console.error("Doubt Error:", err);
+    res.status(500).json({ success: false, message: "Failed to send doubt" }); 
+  }
 });
 
 /* =========================================
@@ -213,7 +249,7 @@ router.get("/notices", async (req, res) => {
 });
 
 /* =========================================
-   11. TOGGLE BOOKMARK (✅ NEW ROUTE)
+   11. TOGGLE BOOKMARK
 ========================================= */
 router.post("/toggle-bookmark", async (req, res) => {
   try {
@@ -221,20 +257,16 @@ router.post("/toggle-bookmark", async (req, res) => {
     const user = await User.findById(studentId);
     if (!user) return res.status(404).json({ message: "User not found" });
     
-    // Check if already bookmarked
     const exists = user.bookmarks.find(b => b.noticeId === noticeId);
     
     if (exists) {
-      // Remove it
       user.bookmarks = user.bookmarks.filter(b => b.noticeId !== noticeId);
       await user.save();
       return res.json({ success: true, message: "Removed from bookmarks", bookmarks: user.bookmarks });
     } else {
-      // Add it (Find original notice)
       const notice = await Notice.findById(noticeId);
       if (!notice) return res.status(404).json({ message: "Notice expired or not found" });
 
-      // Save COPY of notice (so it persists after deletion)
       user.bookmarks.push({
         noticeId: notice._id.toString(),
         title: notice.title,

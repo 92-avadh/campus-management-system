@@ -15,7 +15,7 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login-step1", {
+      const response = await fetch(`http://localhost:5000/api/auth/login-step1`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, password, role: "admin" })
@@ -37,7 +37,7 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login-step2", {
+      const response = await fetch("${API_BASE_URL}/auth/login-step2", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, otp })

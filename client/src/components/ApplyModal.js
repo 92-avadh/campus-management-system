@@ -38,7 +38,7 @@ const ApplyModal = ({ isOpen, onClose }) => {
     if (marksheet) data.append("marksheet", marksheet);
 
     try {
-      const response = await axios.post("http://localhost:5000/api/applications/apply", data, {
+      const response = await axios.post(`http://localhost:5000/api/applications/apply`, data, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       alert(response.data.message || "Application Submitted!");

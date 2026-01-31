@@ -29,7 +29,7 @@ const NotificationBell = ({ studentId }) => {
     if (!studentId || unreadCount === 0) return;
     
     try {
-      await fetch("http://localhost:5000/api/notifications/notifications/read-all", {
+      await fetch(`http://localhost:5000/api/notifications/notifications/read-all`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ studentId })

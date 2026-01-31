@@ -16,7 +16,7 @@ const StudentNotices = () => {
 
     try {
       // Fetch All Public Notices
-      const noticeRes = await fetch("http://localhost:5000/api/student/notices");
+      const noticeRes = await fetch(`http://localhost:5000/api/student/notices`);
       const noticeData = await noticeRes.json();
       setNotices(Array.isArray(noticeData) ? noticeData : []);
 
@@ -49,7 +49,7 @@ const StudentNotices = () => {
     const originalId = notice.noticeId || notice._id; 
 
     try {
-      const res = await fetch("http://localhost:5000/api/student/toggle-bookmark", {
+      const res = await fetch(`http://localhost:5000/api/student/toggle-bookmark`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ studentId, noticeId: originalId })
