@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 // ✅ Added icons for file upload
 import { FaPaperPlane, FaFileUpload, FaTimes, FaHistory } from "react-icons/fa";
-import { API_BASE_URL, BASE_URL } from "../../apiConfig";
 
 const StudentDoubts = ({ user }) => {
   const [activeTab, setActiveTab] = useState("ask");
@@ -16,85 +15,39 @@ const StudentDoubts = ({ user }) => {
     question: ""
   });
 
-  // ✅ FETCH DATA - FIXED TO HANDLE BCA DEPARTMENT PROPERLY
+  // ✅ FETCH DATA - ROBUST FIX
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log("=== FACULTY FETCH DEBUG ===");
-        console.log("User:", user);
-        console.log("User Department:", user?.department);
-        console.log("User Course:", user?.course);
+        if (!user) return;
 
-        if (!user) {
-          console.error("❌ User object is missing");
-          return;
-        }
-
-        // ✅ FIX: Try both department and course fields
-        // Some systems store it in 'course', others in 'department'
-        let departmentToSearch = user.department || user.course;
-        
-        if (!departmentToSearch) {
-          console.error("❌ Neither department nor course found in user object");
-          console.log("Available user fields:", Object.keys(user));
-          return;
-        }
-
-        // ✅ Normalize department name - remove extra spaces and convert to uppercase
+        // ✅ FIX: Default to "All" if department is missing
+        // This ensures the API is ALWAYS called, even if profile is incomplete
+        let departmentToSearch = user.department || user.course || "All";
         departmentToSearch = departmentToSearch.trim().toUpperCase();
         
         console.log("Searching for department:", departmentToSearch);
 
-        const apiUrl = `${API_BASE_URL}student/faculty-list/${encodeURIComponent(departmentToSearch)}`;
-        console.log("API URL:", apiUrl);
-
+        const apiUrl = `http://localhost:5000/api/student/faculty-list/${encodeURIComponent(departmentToSearch)}`;
+        
         // ✅ Fetch faculty list
         const facRes = await fetch(apiUrl);
-        
-        if (!facRes.ok) {
-          console.error(`❌ Faculty fetch failed with status: ${facRes.status}`);
-          const errorText = await facRes.text();
-          console.error("Error response:", errorText);
-          setFacultyList([]);
-          return;
-        }
-        
-        const facData = await facRes.json();
-        console.log("✅ Faculty data received:", facData);
-        console.log("Number of faculty found:", facData.length);
-        
-        if (facData.length > 0) {
-          facData.forEach((fac, index) => {
-            console.log(`Faculty ${index + 1}:`, {
-              id: fac._id,
-              name: fac.name,
-              department: fac.department
-            });
-          });
+        if (facRes.ok) {
+            const facData = await facRes.json();
+            setFacultyList(facData);
+            console.log("Faculty loaded:", facData.length);
         } else {
-          console.warn("⚠️ No faculty found for department:", departmentToSearch);
+            console.error("Failed to load faculty");
         }
-        
-        setFacultyList(facData);
 
         // ✅ Fetch student's doubts
         const studentId = user._id || user.id;
-        if (!studentId) {
-          console.error("❌ Student ID is missing");
-          return;
-        }{}
-
-        const doubtRes = await fetch(`${API_BASE_URL}/student/my-doubts/${studentId}`);
-        
-        if (!doubtRes.ok) {
-          console.error(`❌ Doubts fetch failed with status: ${doubtRes.status}`);
-          return;
+        if (studentId) {
+            const doubtRes = await fetch(`http://localhost:5000/api/student/my-doubts/${studentId}`);
+            if (doubtRes.ok) {
+                setMyDoubts(await doubtRes.json());
+            }
         }
-        
-        const doubtData = await doubtRes.json();
-        console.log("✅ Doubts data received:", doubtData);
-        
-        setMyDoubts(doubtData);
         
       } catch (err) { 
         console.error("❌ Error fetching data:", err); 
@@ -106,29 +59,28 @@ const StudentDoubts = ({ user }) => {
     }
   }, [user]);
 
-  // ✅ SUBMIT DOUBT (UPDATED FOR FILES)
+  // ✅ SUBMIT DOUBT
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // ✅ Use FormData for file uploads instead of JSON
       const data = new FormData();
       data.append("studentId", user._id || user.id);
       data.append("studentName", user.name);
-      data.append("course", user.course || user.department);
-      data.append("department", user.department || user.course);
+      data.append("course", user.course || user.department || "General");
+      data.append("department", user.department || user.course || "General");
       data.append("facultyId", formData.facultyId);
       data.append("subject", formData.subject);
       data.append("question", formData.question);
       
       if (selectedFile) {
-        data.append("file", selectedFile); // ✅ Add the optional file
+        data.append("file", selectedFile);
       }
 
-      const res = await fetch(`${API_BASE_URL}/student/ask-doubt`, {
+      const res = await fetch(`http://localhost:5000/api/student/ask-doubt`, {
         method: "POST",
-        body: data, // ✅ Browser sets correct headers for FormData
+        body: data,
       });
 
       const result = await res.json();
@@ -136,11 +88,11 @@ const StudentDoubts = ({ user }) => {
       if (result.success) {
         alert("✅ Doubt Sent Successfully!");
         setFormData({ facultyId: "", subject: "", question: "" });
-        setSelectedFile(null); // ✅ Reset file input
+        setSelectedFile(null);
         setActiveTab("history");
         
         // Refresh doubts list
-        const doubtRes = await fetch(`${API_BASE_URL}/student/my-doubts/${user._id || user.id}`);
+        const doubtRes = await fetch(`http://localhost:5000/api/student/my-doubts/${user._id || user.id}`);
         setMyDoubts(await doubtRes.json());
       } else {
         alert("❌ " + result.message);
@@ -202,11 +154,10 @@ const StudentDoubts = ({ user }) => {
                     ))
                   )}
                 </select>
-                {/* Debug info - shows what department is being searched */}
                 <p className="text-xs text-gray-400 mt-1">
                   {facultyList.length > 0 
-                    ? `${facultyList.length} faculty found` 
-                    : `Searching in: ${(user?.department || user?.course || 'N/A').toUpperCase()}`
+                    ? `${facultyList.length} faculty available` 
+                    : `Searching...`
                   }
                 </p>
               </div>
@@ -313,7 +264,7 @@ const StudentDoubts = ({ user }) => {
                 {doubt.file && (
                   <div className="mb-4">
                     <a 
-                      href={`${API_BASE_URL}/${doubt.file}`} 
+                      href={`http://localhost:5000/api/${doubt.file}`} 
                       target="_blank" 
                       rel="noreferrer"
                       className="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1"

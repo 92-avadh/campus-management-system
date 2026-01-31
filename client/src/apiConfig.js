@@ -5,4 +5,4 @@ const hostname = window.location.hostname;
 const PORT = 5000; 
 
 export const API_BASE_URL = `http://${hostname}:${PORT}/api`;
-export const BASE_URL = `http://${hostname}:${PORT}`; // For file downloads/images
+export const BASE_URL = `http://${hostname}:${PORT}`; 

@@ -15,7 +15,7 @@ const normalizeCourse = (course = "") => {
 };
 
 /* =========================
-   GET ALL NOTIFICATIONS (UPDATED)
+   GET ALL NOTIFICATIONS (FIXED)
 ========================= */
 router.get("/notifications/:studentId", async (req, res) => {
   try {
@@ -28,12 +28,13 @@ router.get("/notifications/:studentId", async (req, res) => {
 
     const normalizedCourse = normalizeCourse(student.course);
 
-    // ✅ FETCH LOGIC UPDATE:
-    // Get notifications for the student's SPECIFIC COURSE OR "ALL" (Global Notices)
+    // ✅ FIX: Also fetch notifications where the student is explicitly listed in 'recipients'
+    // This ensures "Doubt Resolved" notifications appear even if the course tag is different.
     const notifications = await Notification.find({
       $or: [
-        { course: normalizedCourse },
-        { course: "ALL" }
+        { course: normalizedCourse },           // Class-wide notices
+        { course: "ALL" },                      // Global notices
+        { "recipients.studentId": studentId }   // Direct personal notifications (Doubts)
       ]
     })
       .populate("createdBy", "name")
@@ -66,7 +67,7 @@ router.get("/notifications/:studentId", async (req, res) => {
 });
 
 /* =========================
-   GET UNREAD COUNT (UPDATED)
+   GET UNREAD COUNT (FIXED)
 ========================= */
 router.get("/notifications/:studentId/unread-count", async (req, res) => {
   try {
@@ -77,11 +78,12 @@ router.get("/notifications/:studentId/unread-count", async (req, res) => {
 
     const normalizedCourse = normalizeCourse(student.course);
 
-    // ✅ FETCH LOGIC UPDATE: Check both Course & Global
+    // ✅ FIX: Same fix here - include personal notifications
     const notifications = await Notification.find({
       $or: [
         { course: normalizedCourse },
-        { course: "ALL" }
+        { course: "ALL" },
+        { "recipients.studentId": studentId }
       ]
     });
 
@@ -143,7 +145,7 @@ router.post("/notifications/:notificationId/read", async (req, res) => {
 });
 
 /* =========================
-   MARK ALL AS READ (UPDATED)
+   MARK ALL AS READ (FIXED)
 ========================= */
 router.post("/notifications/read-all", async (req, res) => {
   try {
@@ -156,11 +158,12 @@ router.post("/notifications/read-all", async (req, res) => {
 
     const normalizedCourse = normalizeCourse(student.course);
 
-    // ✅ FETCH LOGIC UPDATE
+    // ✅ FIX: Same fix here - include personal notifications
     const notifications = await Notification.find({
       $or: [
         { course: normalizedCourse },
-        { course: "ALL" }
+        { course: "ALL" },
+        { "recipients.studentId": studentId }
       ]
     });
 

@@ -29,20 +29,18 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({ storage, fileFilter });
 
 /* =======================
-   ✅ NOTICE OPERATIONS (FIXED)
+   ✅ NOTICE OPERATIONS
 ======================= */
 
 // 1. ADD NOTICE & NOTIFY STUDENTS
 router.post("/add-notice", async (req, res) => {
   try {
-    // ✅ Extract 'userId' from request
     const { title, content, target, postedBy, userId } = req.body;
     
     if (!title || !content || !postedBy || !userId) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // 1. Create the Notice (uses 'postedBy' String)
     const newNotice = new Notice({
       title,
       content,
@@ -52,7 +50,6 @@ router.post("/add-notice", async (req, res) => {
 
     const savedNotice = await newNotice.save();
 
-    // 2. Create Notification (uses 'userId' ObjectId)
     await Notification.create({
       type: "notice",
       title: "New Notice Posted",
@@ -60,7 +57,7 @@ router.post("/add-notice", async (req, res) => {
       course: "ALL",  
       relatedId: savedNotice._id,
       relatedModel: "Notice",
-      createdBy: userId, // ✅ FIX: Must be an ObjectId, not a name string
+      createdBy: userId, 
       createdAt: new Date()
     });
 
@@ -98,7 +95,7 @@ router.delete("/delete-notice/:id", async (req, res) => {
 router.get("/students", async (req, res) => {
   try {
     const { department } = req.query;
-    console.log(`👨‍🏫 Fetching students for Dept: ${department}`); 
+    // console.log(`Fetching students for: ${department}`); 
 
     const students = await User.find({
       role: "student",
@@ -259,20 +256,42 @@ router.get("/doubts/:facultyId", async (req, res) => {
 });
 
 /* =======================
-   ANSWER DOUBT
+   ANSWER DOUBT (UPDATED)
 ======================= */
 router.put("/answer-doubt/:id", async (req, res) => {
   try {
     const { answer } = req.body;
     
-    await Query.findByIdAndUpdate(req.params.id, {
+    // 1. Update Query & Get the Updated Document
+    const updatedQuery = await Query.findByIdAndUpdate(req.params.id, {
       answer,
       status: "Resolved",
       resolvedAt: Date.now()
+    }, { new: true }); // {new:true} returns the updated document
+
+    if (!updatedQuery) {
+      return res.status(404).json({ success: false, message: "Query not found" });
+    }
+
+    // 2. ✅ CREATE NOTIFICATION FOR THE STUDENT
+    // Using the 'student' ID found in the Query document
+    await Notification.create({
+      type: "query", // Matches the new enum added to Notification model
+      title: "Doubt Resolved",
+      message: `Your doubt in ${updatedQuery.subject} has been answered.`,
+      course: updatedQuery.course || "General",
+      subject: updatedQuery.subject,
+      relatedId: updatedQuery._id,
+      relatedModel: "Query",
+      createdBy: updatedQuery.faculty,
+      // Target only the student who asked
+      recipients: [{ studentId: updatedQuery.student, read: false }] 
     });
 
-    res.json({ success: true, message: "Answer sent!" });
+    res.json({ success: true, message: "Answer sent & Student Notified!" });
+
   } catch (err) {
+    console.error(err);
     res.status(500).json({ success: false, message: "Failed to answer" });
   }
 });

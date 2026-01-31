@@ -166,30 +166,61 @@ router.get("/notifications/:studentId", async (req, res) => {
 });
 
 /* =========================================
-   7. GET FACULTY LIST - ✅ FIXED WITH BETTER MATCHING
+   7. GET FACULTY LIST - ✅ FIXED (HANDLES 'ALL' & MISMATCHES)
 ========================================= */
 router.get("/faculty-list/:department", async (req, res) => {
   try {
-    // ✅ Normalize and trim the department parameter
-    const dept = req.params.department.trim().toUpperCase();
+    let dept = req.params.department.trim();
+    console.log(`🔍 Searching faculty for: "${dept}"`);
     
-    console.log("🔍 Faculty Search - Department:", dept);
-    
-    // ✅ IMPROVED: Use flexible regex that handles variations
-    // This will match "BCA", " BCA ", "bca", etc.
-    const faculty = await User.find({
+    // ✅ 0. IF "ALL" or "UNDEFINED", RETURN ALL FACULTY IMMEDIATELY
+    if (dept.toUpperCase() === "ALL" || dept.toUpperCase() === "UNDEFINED") {
+       const allFaculty = await User.find({ role: "faculty" }).select("name _id department");
+       console.log(`✅ Returned ALL ${allFaculty.length} faculty members.`);
+       return res.json(allFaculty);
+    }
+
+    // 1. PRIMARY SEARCH: Standard Regex Match
+    let faculty = await User.find({
       role: "faculty",
-      department: { $regex: new RegExp(dept, "i") } // ✅ Changed from ^${dept}$ to just dept for more flexible matching
+      department: { $regex: new RegExp(dept, "i") } 
     }).select("name _id department");
     
-    console.log(`✅ Found ${faculty.length} faculty members`);
-    if (faculty.length > 0) {
-      faculty.forEach(f => {
-        console.log(`  - ${f.name} (${f.department}) - ID: ${f._id}`);
-      });
+    // 2. FALLBACK 1: Smart Match (Strip punctuation)
+    if (faculty.length === 0) {
+      const cleanDept = dept.replace(/[^a-zA-Z0-9]/g, ""); 
+      if (cleanDept.length > 0 && cleanDept !== dept) {
+        faculty = await User.find({
+            role: "faculty",
+            department: { $regex: new RegExp(cleanDept, "i") }
+        }).select("name _id department");
+      }
     }
-    
+
+    // 3. FALLBACK 2: Broad Search (Keywords)
+    if (faculty.length === 0) {
+      let keyword = "";
+      if (/computer|bca/i.test(dept)) keyword = "BCA";
+      else if (/management|bba/i.test(dept)) keyword = "BBA";
+      else if (/commerce|bcom/i.test(dept)) keyword = "BCom";
+
+      if (keyword) {
+        faculty = await User.find({
+          role: "faculty",
+          department: { $regex: new RegExp(keyword, "i") }
+        }).select("name _id department");
+      }
+    }
+
+    // 4. ULTIMATE FALLBACK: Return ALL Faculty if nothing matched
+    if (faculty.length === 0) {
+      console.log("⚠️ No specific matches found. Returning ALL faculty.");
+      faculty = await User.find({ role: "faculty" }).select("name _id department");
+    }
+
+    console.log(`✅ Returning ${faculty.length} faculty members.`);
     res.json(faculty);
+
   } catch (err) { 
     console.error("❌ Faculty list error:", err);
     res.status(500).json({ message: "Error fetching faculty" }); 
@@ -199,7 +230,6 @@ router.get("/faculty-list/:department", async (req, res) => {
 /* =========================================
    8. ASK A DOUBT (WITH OPTIONAL FILE UPLOAD)
 ========================================= */
-// ✅ FIXED: Now uses upload.single("file") to handle optional attachments
 router.post("/ask-doubt", upload.single("file"), async (req, res) => {
   try {
     const { studentId, facultyId, subject, question, course, department, studentName } = req.body;
@@ -212,7 +242,7 @@ router.post("/ask-doubt", upload.single("file"), async (req, res) => {
       department, 
       subject, 
       question,
-      file: req.file ? req.file.path : null // ✅ Optional file path saved here
+      file: req.file ? req.file.path : null 
     });
 
     await newQuery.save();

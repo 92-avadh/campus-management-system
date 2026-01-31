@@ -4,7 +4,8 @@ const notificationSchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      enum: ["material", "attendance", "notice"],
+      // ✅ ADDED "query" to the allowed types
+      enum: ["material", "attendance", "notice", "query"],
       required: true
     },
 
@@ -55,7 +56,7 @@ const notificationSchema = new mongoose.Schema(
     ]
   },
   {
-    timestamps: true // ⬅️ creates createdAt
+    timestamps: true 
   }
 );
 
@@ -64,7 +65,7 @@ const notificationSchema = new mongoose.Schema(
 =========================== */
 notificationSchema.index(
   { createdAt: 1 },
-  { expireAfterSeconds: 60 * 60 * 24 * 2 } // 2 days
+  { expireAfterSeconds: 60 * 60 * 24 * 2 } 
 );
 
 module.exports = mongoose.model("Notification", notificationSchema);
