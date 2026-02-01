@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import logo from "../logo3.png"; 
-import { API_BASE_URL } from "../../apiConfig";
+import { API_BASE_URL } from "../services/apiConfig";
 
 const Login = () => {
   const navigate = useNavigate();

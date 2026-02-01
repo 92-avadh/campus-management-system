@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+// ✅ Replace with your dynamic URL logic
+const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:5000/api`;
 
 const StudentSettings = ({ user }) => {
   const [activeSection, setActiveSection] = useState("info");
@@ -21,7 +23,7 @@ const StudentSettings = ({ user }) => {
     const fetchProfile = async () => {
       try {
         const userId = user.id || user._id; 
-        const res = await fetch(`http://localhost:5000/api/student/profile/${userId}`);
+        const res = await fetch(`${API_BASE_URL}/student/profile/${userId}`);
         const data = await res.json();
         
         if (res.ok) {
@@ -47,7 +49,7 @@ const StudentSettings = ({ user }) => {
 
     try {
       const userId = user.id || user._id;
-      const res = await fetch(`http://localhost:5000/api/student/update-profile/${userId}`, {
+      const res = await fetch(`${API_BASE_URL}/student/update-profile/${userId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -80,7 +82,7 @@ const StudentSettings = ({ user }) => {
     setLoading(true);
     try {
       const userId = user.id || user._id;
-      const res = await fetch(`http://localhost:5000/api/student/change-password/${userId}`, {
+      const res = await fetch(`${API_BASE_URL}/student/change-password/${userId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

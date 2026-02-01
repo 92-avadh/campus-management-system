@@ -2,9 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaBars, FaTimes } from "react-icons/fa"; // ✅ Icons for mobile toggle
 
-// ✅ Define API_BASE_URL (Ensure this matches your backend IP)
-const API_BASE_URL = `http://${window.location.hostname}:5000/api`;
-
 // Sidebar & Sections
 import AdminSidebar from "../components/dashboard/AdminSidebar";
 import AdminOverview from "../components/dashboard/AdminOverview";
@@ -30,7 +27,8 @@ const Dashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
-    const user = JSON.parse(sessionStorage.getItem("adminUser"));
+    // ✅ FIXED: Changed sessionStorage to localStorage to match Login.js
+    const user = JSON.parse(localStorage.getItem("adminUser"));
     if (!user) {
       navigate("/");
     } else {
@@ -47,7 +45,8 @@ const Dashboard = () => {
   };
 
   const handleLogout = () => {
-    sessionStorage.removeItem("adminUser");
+    // ✅ FIXED: Clear localStorage on logout
+    localStorage.removeItem("adminUser");
     sessionStorage.removeItem("adminActiveTab");
     navigate("/");
   };

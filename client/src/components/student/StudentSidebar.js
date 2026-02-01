@@ -9,11 +9,10 @@ import {
   FcMoneyTransfer, 
   FcSettings 
 } from "react-icons/fc"; 
-import { BASE_URL } from "../../apiConfig";
+import { BASE_URL } from "../../apiConfig"; // ✅ Imports http://localhost:5000 or your IP
 
 const StudentSidebar = ({ user, activeTab, setActiveTab, resolvedQueries }) => {
   
-  // ✅ 1. REALISTIC ICONS LIST
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: <FcHome size={22} /> },
     { id: "attendance", label: "Attendance", icon: <FcCalendar size={22} /> },
@@ -23,10 +22,17 @@ const StudentSidebar = ({ user, activeTab, setActiveTab, resolvedQueries }) => {
     { id: "fees", label: "Fee Payment", icon: <FcMoneyTransfer size={22} /> },
   ];
 
+  // ✅ FIX: Construct the correct URL for server-stored images
   const getPhotoUrl = (photoPath) => {
-    if (!photoPath) return "https://cdn-icons-png.flaticon.com/512/3135/3135715.png";
+    if (!photoPath) return "/default-avatar.png"; // Fallback if DB is empty
+    
+    // If it's already a full URL (external link), use it
     if (photoPath.startsWith("http")) return photoPath;
+    
+    // ✅ Fix Windows paths: Convert 'uploads\image.jpg' to 'uploads/image.jpg'
     const cleanPath = photoPath.replace(/\\/g, "/");
+    
+    // ✅ Result: http://localhost:5000/uploads/image-123.jpg
     return `${BASE_URL}/${cleanPath}`;
   };
 
@@ -37,13 +43,14 @@ const StudentSidebar = ({ user, activeTab, setActiveTab, resolvedQueries }) => {
       <div className="pt-8 pb-4 px-8 flex flex-col items-center text-center">
         <div className="relative mb-4 group">
           <div className="w-24 h-24 rounded-full p-1 bg-white dark:bg-gray-800 shadow-xl border border-gray-100 dark:border-gray-700">
+            {/* ✅ IMAGE FETCHING LOGIC */}
             <img 
               src={getPhotoUrl(user.photo)} 
               alt="Profile" 
               className="w-full h-full rounded-full object-cover bg-gray-100"
               onError={(e) => {
                 e.target.onerror = null; 
-                e.target.src = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png";
+                e.target.src = "/default-avatar.png"; // ✅ Fallback if server image is missing
               }}
             />
           </div>
@@ -77,7 +84,7 @@ const StudentSidebar = ({ user, activeTab, setActiveTab, resolvedQueries }) => {
               {item.label}
             </span>
             
-            {/* ✅ 2. FIX: Badge disappears when you are on the 'doubts' tab */}
+            {/* Badge for Doubts */}
             {item.id === "doubts" && resolvedQueries > 0 && activeTab !== "doubts" && (
                <span className="absolute right-4 bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg animate-bounce">
                  {resolvedQueries}

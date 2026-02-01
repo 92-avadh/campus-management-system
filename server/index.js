@@ -38,7 +38,7 @@ uploadDirs.forEach(dir => {
   }
 });
 
-// Serve static files (images, PDFs)
+// ✅ CRITICAL: Make the 'uploads' folder publicly accessible
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // --- 3. ROUTES ---
@@ -49,7 +49,7 @@ app.use("/api/payment", paymentRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/faculty", facultyRoutes);
 app.use("/api/notifications", notificationRoutes);
-// Note: Applications route logic was inside studentRoutes in previous steps
+// Note: Applications route logic logic is inside studentRoutes
 app.use("/api/applications", studentRoutes);
 
 // --- 4. MIGRATION LOGIC ---

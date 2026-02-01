@@ -19,21 +19,43 @@ const transporter = nodemailer.createTransport({
     auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
 });
 
-// --- MULTER CONFIGURATION FOR FILE UPLOADS ---
+// --- HELPER: Email Style ---
+const emailStyle = (content) => `
+<div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; background-color: #ffffff;">
+  <div style="background-color: #881337; padding: 30px; text-align: center;">
+    <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">🎓 Campus Management System</h1>
+  </div>
+  <div style="padding: 40px 30px; color: #334155; line-height: 1.6;">
+    ${content}
+  </div>
+  <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0; color: #94a3b8; font-size: 12px;">
+    <p style="margin: 0;">&copy; ${new Date().getFullYear()} Campus Management System. All rights reserved.</p>
+    <p style="margin: 5px 0 0;">This is an automated message. Please do not reply directly.</p>
+  </div>
+</div>
+`;
+
+// --- ✅ MODIFIED: MULTER CONFIG (PHASE 1: TEMPORARY NAMING) ---
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        // You can separate folders for different types of uploads
         cb(null, "uploads/"); 
     },
     filename: (req, file, cb) => {
-        cb(null, `${file.fieldname}-${Date.now()}${path.extname(file.originalname)}`);
+        // 1. Sanitize email to be safe for filenames
+        const safeEmail = req.body.email ? req.body.email.replace(/[^a-zA-Z0-9]/g, "_") : "applicant";
+        
+        // 2. Identify type (PHOTO or MARKSHEET)
+        const type = file.fieldname.toUpperCase();
+        
+        // 3. Construct Temp Name: TEMP_PHOTO_avadh_gmail_com_17123456.jpg
+        cb(null, `TEMP_${type}_${safeEmail}_${Date.now()}${path.extname(file.originalname)}`);
     }
 });
 
 const upload = multer({ storage });
 
 /* =========================================
-   1. APPLY FOR ADMISSION
+   1. APPLY FOR ADMISSION (Styled Email)
 ========================================= */
 router.post("/apply", upload.fields([{ name: "photo" }, { name: "marksheet" }]), async (req, res) => {
     try {
@@ -45,12 +67,41 @@ router.post("/apply", upload.fields([{ name: "photo" }, { name: "marksheet" }]),
       if (pendingApp) return res.status(400).json({ message: "Application already submitted!" });
 
       const newApp = new Application(req.body);
+      
+      // Save the paths (These are now the TEMP paths)
       if (req.files['photo']) newApp.photo = req.files['photo'][0].path;
       if (req.files['marksheet']) newApp.marksheet = req.files['marksheet'][0].path;
+      
       await newApp.save();
+
+      // ✅ PROFESSIONAL EMAIL
+      const mailContent = `
+        <h2 style="color: #0f172a; margin-top: 0;">Application Received 📄</h2>
+        <p>Dear <strong>${name}</strong>,</p>
+        <p>We are pleased to inform you that your application for the <strong>${course}</strong> program has been successfully received.</p>
+        <div style="background-color: #f1f5f9; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6;">
+          <p style="margin: 0; font-weight: bold; color: #334155;">Next Steps:</p>
+          <p style="margin: 5px 0 0; font-size: 14px;">Our administration team will review your details and documents. You will receive an email notification regarding your admission status shortly.</p>
+        </div>
+        <p>Thank you for choosing us for your educational journey!</p>
+        <br/>
+        <p style="font-weight: bold;">Best Regards,<br>Admission Team</p>
+      `;
+
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: "✅ Application Received - Campus Management System",
+        html: emailStyle(mailContent)
+      };
+
+      transporter.sendMail(mailOptions, (err) => {
+        if (err) console.error("Email Error:", err);
+      });
 
       res.json({ message: "Application submitted successfully!" });
     } catch (err) {
+      console.error(err);
       res.status(500).json({ message: "Application failed" });
     }
 });
@@ -166,27 +217,22 @@ router.get("/notifications/:studentId", async (req, res) => {
 });
 
 /* =========================================
-   7. GET FACULTY LIST - ✅ FIXED (HANDLES 'ALL' & MISMATCHES)
+   7. GET FACULTY LIST
 ========================================= */
 router.get("/faculty-list/:department", async (req, res) => {
   try {
     let dept = req.params.department.trim();
-    console.log(`🔍 Searching faculty for: "${dept}"`);
     
-    // ✅ 0. IF "ALL" or "UNDEFINED", RETURN ALL FACULTY IMMEDIATELY
     if (dept.toUpperCase() === "ALL" || dept.toUpperCase() === "UNDEFINED") {
        const allFaculty = await User.find({ role: "faculty" }).select("name _id department");
-       console.log(`✅ Returned ALL ${allFaculty.length} faculty members.`);
        return res.json(allFaculty);
     }
 
-    // 1. PRIMARY SEARCH: Standard Regex Match
     let faculty = await User.find({
       role: "faculty",
       department: { $regex: new RegExp(dept, "i") } 
     }).select("name _id department");
     
-    // 2. FALLBACK 1: Smart Match (Strip punctuation)
     if (faculty.length === 0) {
       const cleanDept = dept.replace(/[^a-zA-Z0-9]/g, ""); 
       if (cleanDept.length > 0 && cleanDept !== dept) {
@@ -197,7 +243,6 @@ router.get("/faculty-list/:department", async (req, res) => {
       }
     }
 
-    // 3. FALLBACK 2: Broad Search (Keywords)
     if (faculty.length === 0) {
       let keyword = "";
       if (/computer|bca/i.test(dept)) keyword = "BCA";
@@ -212,23 +257,18 @@ router.get("/faculty-list/:department", async (req, res) => {
       }
     }
 
-    // 4. ULTIMATE FALLBACK: Return ALL Faculty if nothing matched
     if (faculty.length === 0) {
-      console.log("⚠️ No specific matches found. Returning ALL faculty.");
       faculty = await User.find({ role: "faculty" }).select("name _id department");
     }
 
-    console.log(`✅ Returning ${faculty.length} faculty members.`);
     res.json(faculty);
-
   } catch (err) { 
-    console.error("❌ Faculty list error:", err);
     res.status(500).json({ message: "Error fetching faculty" }); 
   }
 });
 
 /* =========================================
-   8. ASK A DOUBT (WITH OPTIONAL FILE UPLOAD)
+   8. ASK A DOUBT
 ========================================= */
 router.post("/ask-doubt", upload.single("file"), async (req, res) => {
   try {

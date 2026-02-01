@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
+// We don't need the import if we define it dynamically below, 
+// but keeping it cleanly self-contained is better.
 
 const ApplyModal = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
@@ -8,15 +10,18 @@ const ApplyModal = ({ isOpen, onClose }) => {
     email: "",
     phone: "",
     course: "BCA (Computer Applications)",
-    dob: "",       // Added missing field
-    gender: "Male", // Added missing field
-    address: "",    // Added missing field
+    dob: "",
+    gender: "Male",
+    address: "",
     percentage: "",
   });
   
   const [photo, setPhoto] = useState(null);
   const [marksheet, setMarksheet] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // ✅ FIXED: Use window.location.hostname to work on Mobile/Network
+  const API_BASE_URL = `http://${window.location.hostname}:5000/api`;
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -38,7 +43,8 @@ const ApplyModal = ({ isOpen, onClose }) => {
     if (marksheet) data.append("marksheet", marksheet);
 
     try {
-      const response = await axios.post(`http://localhost:5000/api/applications/apply`, data, {
+      // ✅ FIXED: Using dynamic API URL
+      const response = await axios.post(`${API_BASE_URL}/student/apply`, data, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       alert(response.data.message || "Application Submitted!");
@@ -64,19 +70,16 @@ const ApplyModal = ({ isOpen, onClose }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="p-10 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
-            {/* Name & Email */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <input name="name" onChange={handleChange} required placeholder="Full Name" className="w-full px-5 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-rose-500 outline-none" />
               <input name="email" type="email" onChange={handleChange} required placeholder="Email Address" className="w-full px-5 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-rose-500 outline-none" />
             </div>
 
-            {/* Phone & Percentage */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <input name="phone" onChange={handleChange} required placeholder="Phone Number" className="w-full px-5 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-rose-500 outline-none" />
               <input name="percentage" type="number" onChange={handleChange} required placeholder="12th Percentage" className="w-full px-5 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-rose-500 outline-none" />
             </div>
 
-            {/* Date of Birth & Gender */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1">
                 <label className="text-[10px] font-bold uppercase text-slate-400 ml-2">Date of Birth</label>
@@ -92,7 +95,6 @@ const ApplyModal = ({ isOpen, onClose }) => {
               </div>
             </div>
 
-            {/* Course & Address */}
             <select name="course" onChange={handleChange} className="w-full px-5 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-rose-500 outline-none">
               <option>BCA (Computer Applications)</option>
               <option>BBA (Business Administration)</option>
@@ -101,7 +103,6 @@ const ApplyModal = ({ isOpen, onClose }) => {
 
             <textarea name="address" onChange={handleChange} required placeholder="Residential Address" rows="2" className="w-full px-5 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-rose-500 outline-none transition-all"></textarea>
 
-            {/* Files */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:border-rose-300 relative">
                 <input type="file" name="photo" onChange={handleFileChange} required className="absolute inset-0 opacity-0 cursor-pointer" />

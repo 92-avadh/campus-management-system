@@ -11,11 +11,15 @@ const applicationSchema = new mongoose.Schema({
   address: { type: String, required: true },
   percentage: { type: String, required: true },
   
-  // --- CHANGED FIELDS ---
-  photo: { type: String },      // Stores path like "uploads/photo-123.jpg"
-  marksheet: { type: String },  // Stores path like "uploads/marksheet-123.pdf"
+  // ✅ ADDED: Fields to store temporary file paths
+  photo: { type: String },      
+  marksheet: { type: String },  
   
-  status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" }
+  status: { 
+    type: String, 
+    enum: ["Pending", "Approved", "Rejected"], 
+    default: "Pending" 
+  }
 }, { timestamps: true });
 
 module.exports = mongoose.model("Application", applicationSchema, "applications");

@@ -7,6 +7,7 @@ const AdminApplications = () => {
   // Fetch pending applications
   const fetchApplications = async () => {
     try {
+      // Fetch only pending applications to keep the list clean
       const res = await fetch(`http://localhost:5000/api/admin/applications`);
       const data = await res.json();
       setApplications(data);
@@ -35,8 +36,8 @@ const AdminApplications = () => {
       if(!window.confirm(`Are you sure you want to approve this student?`)) return;
     }
 
-    // Determine endpoint based on status
-    const endpoint = status === 'approved' ? 'approve' : 'reject';
+    // ✅ FIXED: Correct endpoint names to match backend
+    const endpoint = status === 'approved' ? 'approve-application' : 'reject-application';
 
     try {
       const res = await fetch(`http://localhost:5000/api/admin/${endpoint}/${id}`, {
@@ -47,10 +48,15 @@ const AdminApplications = () => {
       });
       
       const data = await res.json();
-      alert(data.message || "Action Successful");
-      fetchApplications(); // Refresh list
+      
+      if (res.ok) {
+        alert(data.message || "Action Successful");
+        fetchApplications(); // Refresh list immediately
+      } else {
+        alert(`❌ Error: ${data.message}`);
+      }
     } catch (err) { 
-      alert("Action failed"); 
+      alert("Action failed: Server error"); 
     }
   };
 

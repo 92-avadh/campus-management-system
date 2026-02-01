@@ -14,19 +14,19 @@ const userSchema = new mongoose.Schema({
   percentage: { type: Number },
   isFeePaid: { type: Boolean, default: false },
 
-  // Documents
-  photo: { type: String },      
-  marksheet: { type: String },
-  dob: { type: Date },
-  address: { type: String },
+  // Documents & Personal Details
+  photo: { type: String, default: "" },      
+  marksheet: { type: String, default: "" },
+  dob: { type: Date },      // ✅ Ensured
+  address: { type: String }, // ✅ Ensured
   
   // OTP
   otp: { type: String },
   otpExpires: { type: Date },
 
-  // ✅ NEW: Persistent Bookmarks (Stores copy of notice)
+  // Bookmarks
   bookmarks: [{
-    noticeId: { type: String }, // Reference to original
+    noticeId: { type: String },
     title: { type: String },
     content: { type: String },
     date: { type: Date },

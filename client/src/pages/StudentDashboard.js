@@ -19,8 +19,8 @@ const StudentDashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [resolvedQueries, setResolvedQueries] = useState(0); // Displays UNREAD count
-  const [totalResolved, setTotalResolved] = useState(0);     // Stores TOTAL count
+  const [resolvedQueries, setResolvedQueries] = useState(0); 
+  const [totalResolved, setTotalResolved] = useState(0);     
 
   // Mobile Menu State
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -34,22 +34,34 @@ const StudentDashboard = () => {
     return sessionStorage.getItem("activeTab") || "dashboard";
   });
 
-  // ✅ UPDATED: Handle Tab Change & Clear Notifications
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
     sessionStorage.setItem("activeTab", tabId);
     setIsSidebarOpen(false);
 
-    // ✅ FIX: If user clicks 'doubts', mark all current queries as SEEN
     if (tabId === "doubts" && user) {
        localStorage.setItem(`seen_resolved_${user._id || user.id}`, totalResolved);
-       setResolvedQueries(0); // Immediately clear the badge
+       setResolvedQueries(0); 
     }
   };
 
   /* =====================
      API CALLS
   ====================== */
+  
+  // ✅ FIX: Fetch FRESH user data (Fixes Payment & Photo State)
+  const fetchUserProfile = useCallback(async (userId) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/student/profile/${userId}`);
+      if (res.ok) {
+        const freshUser = await res.json();
+        setUser(freshUser);
+        // Update session storage so reloading works too
+        sessionStorage.setItem("currentUser", JSON.stringify(freshUser));
+      }
+    } catch (err) { console.error("Profile fetch error", err); }
+  }, []);
+
   const fetchAttendance = useCallback(async (id) => {
     try {
       const res = await fetch(`${API_BASE_URL}/student/attendance/${id}`);
@@ -66,7 +78,6 @@ const StudentDashboard = () => {
     } catch (err) { console.error(err); }
   }, []);
 
-  // ✅ FIX: Calculate UNREAD count based on LocalStorage
   const fetchResolvedCount = useCallback(async (studentId) => {
     if (!studentId) return;
     try {
@@ -74,14 +85,10 @@ const StudentDashboard = () => {
       if (!res.ok) return;
       const data = await res.json();
       
-      // 1. Get Total Resolved from DB
       const currentTotal = Array.isArray(data) ? data.filter(q => q.status === "Resolved").length : 0;
       setTotalResolved(currentTotal);
 
-      // 2. Get "Seen" count from LocalStorage
       const seenCount = parseInt(localStorage.getItem(`seen_resolved_${studentId}`) || "0");
-
-      // 3. Calculate Unread (Total - Seen)
       const unread = Math.max(0, currentTotal - seenCount);
       setResolvedQueries(unread);
 
@@ -100,12 +107,15 @@ const StudentDashboard = () => {
         return;
       }
       
+      // Load initial data from session (to prevent flickering)
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
       const userId = parsedUser._id || parsedUser.id;
 
       try {
         await Promise.all([
+          // ✅ FIX: Force refresh user profile immediately on load
+          fetchUserProfile(userId),
           fetchAttendance(userId),
           fetchNotices(),
           fetchResolvedCount(userId)
@@ -126,7 +136,7 @@ const StudentDashboard = () => {
     return () => { 
       if (intervalId) clearInterval(intervalId); 
     };
-  }, [navigate, fetchAttendance, fetchNotices, fetchResolvedCount]); 
+  }, [navigate, fetchAttendance, fetchNotices, fetchResolvedCount, fetchUserProfile]); 
 
   const handleLogout = () => {
     sessionStorage.removeItem("currentUser");
@@ -134,9 +144,10 @@ const StudentDashboard = () => {
     navigate("/login");
   };
 
+  // ✅ FIX: Reload page is now effective because we fetch fresh data on mount
   const handleFeePaymentSuccess = () => {
     alert("Payment Recorded! Refreshing...");
-    window.location.reload();
+    window.location.reload(); 
   };
 
   if (loading) return (

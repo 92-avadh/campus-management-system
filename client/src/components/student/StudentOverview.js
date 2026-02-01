@@ -18,7 +18,6 @@ const StudentOverview = ({ user }) => {
         <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-black/10 rounded-full blur-2xl"></div>
         
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-6">
-          {/* ✅ REMOVED THE FIRST LETTER BOX */}
           
           <div className="flex-1">
             <h2 className="text-3xl font-bold">{user.name}</h2>
@@ -27,9 +26,7 @@ const StudentOverview = ({ user }) => {
                <span className="px-3 py-1 bg-black/20 rounded-lg text-xs font-mono font-bold border border-white/10">
                  ID: {user.userId}
                </span>
-               <span className="px-3 py-1 bg-white/20 rounded-lg text-xs font-bold border border-white/10">
-                 Semester 6
-               </span>
+               {/* Semester badge removed here */}
             </div>
           </div>
         </div>
@@ -38,7 +35,7 @@ const StudentOverview = ({ user }) => {
       {/* 2. DASHBOARD GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
-        {/* Card 1: Academic Info (Kept as is) */}
+        {/* Card 1: Academic Info */}
         <div className="bg-white dark:bg-gray-800 p-8 rounded-[2rem] shadow-lg border border-gray-100 dark:border-gray-700 hover:-translate-y-1 transition-all h-full">
           <div className="flex items-center justify-between mb-6">
              <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center text-xl">
@@ -66,7 +63,7 @@ const StudentOverview = ({ user }) => {
           </div>
         </div>
 
-        {/* Card 2: QUICK UPDATES (Replaced Fee Box) */}
+        {/* Card 2: QUICK UPDATES */}
         <div className="bg-white dark:bg-gray-800 p-8 rounded-[2rem] shadow-lg border border-gray-100 dark:border-gray-700 hover:-translate-y-1 transition-all h-full relative overflow-hidden">
           <div className="flex items-center gap-3 mb-6 relative z-10">
              <div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-2xl flex items-center justify-center text-xl animate-pulse">

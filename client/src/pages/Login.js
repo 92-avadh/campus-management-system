@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 
 const Login = () => {
   const navigate = useNavigate();
+  // UI keeps only Student/Faculty as requested, but logic handles Admin too
   const [activeRole, setActiveRole] = useState("student");
-  const [step, setStep] = useState(1); // Step 1: ID/Pass, Step 2: OTP
+  const [step, setStep] = useState(1); 
   const [loading, setLoading] = useState(false);
   
   const [credentials, setCredentials] = useState({ id: "", password: "" });
@@ -20,24 +21,26 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/auth/login-step1`, {
+      const cleanId = credentials.id.trim();
+      // ✅ Dynamic URL for mobile access
+      const response = await fetch(`${window.location.protocol}//${window.location.hostname}:5000/api/auth/login-step1`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: credentials.id,
+          userId: cleanId,
           password: credentials.password,
           role: activeRole
         })
       });
       const data = await response.json();
       if (response.ok) {
-        setMaskedEmail(data.email); // Store email to show "Sent to a***@gmail.com"
-        setStep(2); // Move to OTP Screen
+        setMaskedEmail(data.email); 
+        setStep(2); 
       } else {
         alert("❌ Error: " + data.message);
       }
     } catch (error) {
-      alert("Server Error");
+      alert("Server Error. Check connection.");
     } finally {
       setLoading(false);
     }
@@ -48,19 +51,31 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/auth/login-step2`, {
+      const cleanId = credentials.id.trim();
+      const response = await fetch(`${window.location.protocol}//${window.location.hostname}:5000/api/auth/login-step2`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: credentials.id,
+          userId: cleanId,
           otp: otp
         })
       });
       const data = await response.json();
+      
       if (response.ok) {
-        sessionStorage.setItem("currentUser", JSON.stringify(data.user));
-        if (activeRole === "faculty") navigate("/faculty-dashboard");
-        else navigate("/student-dashboard");
+        // ✅ FIX: Save Session Data (User + Token)
+        const sessionData = { ...data.user, token: data.token }; 
+        sessionStorage.setItem("currentUser", JSON.stringify(sessionData));
+        
+        if (data.user.role === 'admin') {
+            // ✅ FIX: Persist Admin Token explicitly for Admin Dashboard
+            localStorage.setItem("adminUser", JSON.stringify(sessionData));
+            navigate("/dashboard");
+        } else if (activeRole === "faculty") {
+            navigate("/faculty-dashboard");
+        } else {
+            navigate("/student-dashboard");
+        }
       } else {
         alert("❌ " + data.message);
       }
@@ -71,24 +86,18 @@ const Login = () => {
     }
   };
 
-  // Role Styles
-  const isFaculty = activeRole === "faculty";
-  const themeColor = isFaculty ? "bg-blue-700" : "bg-red-700";
+  const themeColor = activeRole === "faculty" ? "bg-blue-700" : "bg-red-700";
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 font-sans">
       <div className="bg-white w-full max-w-md p-8 rounded-3xl shadow-xl">
-        
-        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900">SDJIC Login</h1>
           <p className="text-sm text-gray-500">Secure 2-Step Verification</p>
         </div>
 
-        {/* Step 1 Form */}
         {step === 1 && (
           <>
-            {/* Tabs */}
             <div className="flex mb-6 bg-gray-100 p-1 rounded-lg">
               {["student", "faculty"].map((role) => (
                 <button
@@ -103,7 +112,7 @@ const Login = () => {
 
             <form onSubmit={handleStep1} className="space-y-4">
               <input 
-                name="id" required placeholder={`${activeRole} ID`} 
+                name="id" required placeholder={`${activeRole.toUpperCase()} ID`} 
                 className="w-full p-3 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
                 onChange={handleChange}
               />
@@ -119,14 +128,12 @@ const Login = () => {
           </>
         )}
 
-        {/* Step 2 Form (OTP) */}
         {step === 2 && (
           <form onSubmit={handleStep2} className="space-y-6 animate-fade-in">
             <div className="text-center bg-green-50 text-green-700 p-3 rounded-lg text-sm">
               ✅ OTP sent to your email!<br/>
               <span className="font-mono text-xs text-gray-500">({maskedEmail})</span>
             </div>
-
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1">Enter OTP</label>
               <input 
@@ -135,17 +142,14 @@ const Login = () => {
                 value={otp} onChange={(e) => setOtp(e.target.value)}
               />
             </div>
-
             <button type="submit" disabled={loading} className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg">
               {loading ? "Verifying..." : "Verify & Login"}
             </button>
-            
             <button type="button" onClick={() => setStep(1)} className="w-full text-xs text-gray-400 hover:text-gray-600">
               ← Back to Login
             </button>
           </form>
         )}
-
       </div>
     </div>
   );
