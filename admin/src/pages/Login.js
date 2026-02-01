@@ -45,7 +45,7 @@ const Login = () => {
       });
       const data = await response.json();
       if (response.ok) {
-        localStorage.setItem("adminUser", JSON.stringify(data.user));
+        localStorage.setItem("adminUser", JSON.stringify(data));
         navigate("/dashboard");
       } else {
         alert(`❌ OTP Error: ${data.message}`);
