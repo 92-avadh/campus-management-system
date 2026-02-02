@@ -49,7 +49,7 @@ const getHtmlTemplate = (title, bodyContent) => `
 //      EXISTING LOGIN ROUTES
 // ==============================
 
-// LOGIN STEP 1: Validate ID & Password -> Send OTP
+// LOGIN STEP 1: Validate ID & Password -> Send OTP (OPTIMIZED)
 router.post("/login-step1", async (req, res) => {
   try {
     let { userId, password, role } = req.body;
@@ -74,9 +74,10 @@ router.post("/login-step1", async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpires = Date.now() + 5 * 60 * 1000; 
 
+    // Save to DB
     await User.updateOne({ _id: user._id }, { $set: { otp, otpExpires } });
 
-    // ✅ Send Attractive Email (AWAITED)
+    // Prepare Email Content
     const mailContent = `
       <p>Hello <strong>${user.name}</strong>, 👋</p>
       <p>We received a login request for your account. Please use the One-Time Password (OTP) below to complete your login:</p>
@@ -92,13 +93,20 @@ router.post("/login-step1", async (req, res) => {
       html: getHtmlTemplate("🔒 Secure Login OTP", mailContent)
     };
     
-    // ✅ Await email so frontend knows if it failed
-    await transporter.sendMail(mailOptions);
+    // 🚀 FIRE AND FORGET: Send Response FIRST
+    res.json({ message: "OTP Sent", email: user.email });
 
-    res.json({ message: "OTP Sent", email: user.email }); 
+    // Send Email in Background (User doesn't wait for this)
+    transporter.sendMail(mailOptions).catch(err => {
+        console.error("❌ Background Email Failed:", err);
+    });
+
   } catch (error) {
     console.error("Login OTP Error:", error);
-    res.status(500).json({ message: "Server Error (Check Email Config)" });
+    // Only send error if we haven't replied yet
+    if (!res.headersSent) {
+        res.status(500).json({ message: "Server Error" });
+    }
   }
 });
 
@@ -130,7 +138,7 @@ router.post("/login-step2", async (req, res) => {
 //    FORGOT PASSWORD ROUTES
 // ==============================
 
-// STEP 1: Send OTP to Email
+// STEP 1: Send OTP to Email (OPTIMIZED)
 router.post("/forgot-password-step1", async (req, res) => {
   try {
     const { email } = req.body;
@@ -142,9 +150,10 @@ router.post("/forgot-password-step1", async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpires = Date.now() + 10 * 60 * 1000; 
 
+    // Save to DB
     await User.updateOne({ _id: user._id }, { $set: { otp, otpExpires } });
 
-    // ✅ Send Attractive Email (AWAITED)
+    // Prepare Email Content
     const mailContent = `
       <p>Hi <strong>${user.name}</strong>,</p>
       <p>You requested to reset your password. Use the code below to proceed:</p>
@@ -159,14 +168,19 @@ router.post("/forgot-password-step1", async (req, res) => {
       html: getHtmlTemplate("Reset Your Password", mailContent)
     };
     
-    // ✅ Await email
-    await transporter.sendMail(mailOptions);
-
+    // 🚀 FIRE AND FORGET: Send Response FIRST
     res.json({ success: true, message: "OTP sent to your email" });
+
+    // Send Email in Background
+    transporter.sendMail(mailOptions).catch(err => {
+        console.error("❌ Forgot Password Email Failed:", err);
+    });
 
   } catch (err) {
     console.error("Forgot Pass Error:", err);
-    res.status(500).json({ message: "Server Error (Check Email Config)" });
+    if (!res.headersSent) {
+        res.status(500).json({ message: "Server Error" });
+    }
   }
 });
 
