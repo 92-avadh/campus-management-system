@@ -1,7 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
-const path = require("path");
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const cloudinary = require("cloudinary").v2;
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 
@@ -22,7 +23,24 @@ const transporter = nodemailer.createTransport({
     auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
 });
 
-// ✅ UNIFIED EMAIL TEMPLATE
+// CLOUDINARY CONFIG
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "campus_admissions",
+    allowed_formats: ["jpg", "png", "jpeg", "pdf"],
+    resource_type: "auto"
+  }
+});
+
+const upload = multer({ storage });
+
 const getHtmlTemplate = (title, bodyContent) => `
 <!DOCTYPE html>
 <html>
@@ -52,19 +70,8 @@ const getHtmlTemplate = (title, bodyContent) => `
 </html>
 `;
 
-// --- MULTER CONFIG ---
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, "uploads/"),
-    filename: (req, file, cb) => {
-        const safeEmail = req.body.email ? req.body.email.replace(/[^a-zA-Z0-9]/g, "_") : "applicant";
-        const type = file.fieldname.toUpperCase();
-        cb(null, `TEMP_${type}_${safeEmail}_${Date.now()}${path.extname(file.originalname)}`);
-    }
-});
-const upload = multer({ storage });
-
 /* =========================================
-   1. APPLY FOR ADMISSION
+   1. APPLY FOR ADMISSION (UPDATED)
 ========================================= */
 router.post("/apply", upload.fields([{ name: "photo" }, { name: "marksheet" }]), async (req, res) => {
     try {
@@ -76,12 +83,14 @@ router.post("/apply", upload.fields([{ name: "photo" }, { name: "marksheet" }]),
       if (pendingApp) return res.status(400).json({ message: "Application already submitted!" });
 
       const newApp = new Application(req.body);
-      if (req.files['photo']) newApp.photo = req.files['photo'][0].path.replace(/\\/g, "/");
-      if (req.files['marksheet']) newApp.marksheet = req.files['marksheet'][0].path.replace(/\\/g, "/");
+      
+      // ✅ FIX: Use req.files...path (Cloudinary URL)
+      if (req.files['photo']) newApp.photo = req.files['photo'][0].path;
+      if (req.files['marksheet']) newApp.marksheet = req.files['marksheet'][0].path;
       
       await newApp.save();
 
-      // ✅ Redesigned Application Email
+      // Email Notification
       const mailContent = `
         <p>Dear <strong>${name}</strong>,</p>
         <p>Thank you for choosing our campus! We have successfully received your application for the <strong>${course}</strong> program.</p>
@@ -100,7 +109,6 @@ router.post("/apply", upload.fields([{ name: "photo" }, { name: "marksheet" }]),
         html: getHtmlTemplate("Application Submitted Successfully", mailContent)
       };
       
-      // ✅ AWAIT EMAIL
       await transporter.sendMail(mailOptions);
 
       res.json({ message: "Application submitted successfully!" });
@@ -346,7 +354,7 @@ router.get("/timetable/:course", async (req, res) => {
   }
 });
 
-// ✅ ADDED: PAYMENT ROUTE
+// PAYMENT ROUTE
 router.post("/pay-fees", async (req, res) => {
     try {
       const { studentId, amount, semester } = req.body;
@@ -354,9 +362,8 @@ router.post("/pay-fees", async (req, res) => {
       const student = await User.findById(studentId);
       if (!student) return res.status(404).json({ message: "Student not found" });
   
-      // Simulate Payment Record
       await Notification.create({
-          type: "payment", // ✅ Uses valid enum 'payment'
+          type: "payment", 
           title: `💰 Fee Payment Successful`,
           message: `Received ₹${amount} for Semester ${semester}`,
           recipients: [{ studentId: student._id }],

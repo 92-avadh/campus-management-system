@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const cloudinary = require("cloudinary").v2;
 const path = require("path");
 const crypto = require("crypto"); 
 const bcrypt = require("bcryptjs");
@@ -14,21 +16,24 @@ const Notice = require("../models/Notice");
 const AttendanceSession = require("../models/AttendanceSession"); 
 
 /* =======================
-   MULTER CONFIG
+   CLOUDINARY CONFIG
 ======================= */
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/materials/"),
-  filename: (req, file, cb) =>
-    cb(null, `material-${Date.now()}${path.extname(file.originalname)}`)
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-const fileFilter = (req, file, cb) => {
-  const allowed = /pdf|doc|docx|ppt|pptx|txt/;
-  if (allowed.test(file.mimetype)) cb(null, true);
-  else cb(new Error("Invalid file type"));
-};
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "campus_materials",
+    allowed_formats: ["pdf", "doc", "docx", "ppt", "pptx", "txt"],
+    resource_type: "auto"
+  }
+});
 
-const upload = multer({ storage, fileFilter });
+const upload = multer({ storage });
 
 /* =======================
    1. GET NOTICES
@@ -140,17 +145,20 @@ router.get("/subjects/:courseName", async (req, res) => {
 });
 
 /* =======================
-   5. MATERIAL OPERATIONS
+   5. MATERIAL OPERATIONS (UPDATED FOR CLOUDINARY)
 ======================= */
 router.post("/upload-material", upload.single("material"), async (req, res) => {
   try {
     const { title, course, subject, uploadedBy } = req.body;
+    
     const newMaterial = new Material({
       title, course, subject, uploadedBy,
-      filePath: req.file.path,
+      // Cloudinary returns the URL in req.file.path
+      filePath: req.file.path, 
       fileName: req.file.originalname,
       fileSize: req.file.size
     });
+    
     const saved = await newMaterial.save();
     
     await Notification.create({
@@ -161,7 +169,10 @@ router.post("/upload-material", upload.single("material"), async (req, res) => {
         createdBy: uploadedBy
     });
     res.status(201).json(saved);
-  } catch (err) { res.status(500).json({ message: "Error" }); }
+  } catch (err) { 
+    console.error(err);
+    res.status(500).json({ message: "Error uploading file" }); 
+  }
 });
 
 router.get("/my-materials/:facultyId", async (req, res) => {
@@ -269,21 +280,17 @@ router.post("/upload-timetable", async (req, res) => {
   }
 });
 
-// ✅ GET ALL UPCOMING TIMETABLES (Flattened for Faculty View)
 router.get("/timetable", async (req, res) => {
     try {
         const { department } = req.query;
-        
-        // Fetch all timetables from Today onwards
         const startOfDay = new Date(); 
         startOfDay.setHours(0,0,0,0);
         
         const timetables = await Timetable.find({
             department,
             date: { $gte: startOfDay }
-        }).sort({ date: 1 }); // Sort by date ascending
+        }).sort({ date: 1 });
 
-        // Flatten data structure similar to student view
         const flatSchedule = timetables.reduce((acc, curr) => {
             const rawDate = curr.date;
             const slots = curr.schedule.map(s => ({
@@ -302,9 +309,6 @@ router.get("/timetable", async (req, res) => {
 router.post("/cancel-class", async (req, res) => {
     try {
         const { department, date, slotId } = req.body;
-        
-        // Ensure we find the exact document by date
-        // Use the raw date string sent from frontend (ISO format)
         let safeDate = new Date(date); 
         const startOfDay = new Date(safeDate); startOfDay.setHours(0,0,0,0);
         const endOfDay = new Date(safeDate); endOfDay.setHours(23,59,59,999);
@@ -331,7 +335,6 @@ router.post("/cancel-class", async (req, res) => {
                 createdAt: new Date()
             });
         }
-
         res.json({ success: true, message: slot.isCancelled ? "Class Cancelled" : "Class Restored" });
         
     } catch (err) {
@@ -353,8 +356,7 @@ router.post("/delete-class-slot", async (req, res) => {
     });
 
     if (timetable) {
-      timetable.schedule.pull({ _id: slotId }); // Remove slot
-      // If schedule empty, remove document? Optional.
+      timetable.schedule.pull({ _id: slotId }); 
       if (timetable.schedule.length === 0) {
         await Timetable.findByIdAndDelete(timetable._id);
       } else {
