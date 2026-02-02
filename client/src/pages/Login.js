@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom"; 
+import { API_BASE_URL } from "../apiConfig";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -37,7 +38,7 @@ const Login = () => {
     setLoading(true);
     try {
       const cleanId = credentials.id.trim();
-      const response = await fetch(`${window.location.protocol}//${window.location.hostname}:5000/api/auth/login-step1`, {
+      const response = await fetch(`${API_BASE_URL}/auth/login-step1`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -65,7 +66,7 @@ const Login = () => {
     setLoading(true);
     try {
       const cleanId = credentials.id.trim();
-      const response = await fetch(`${window.location.protocol}//${window.location.hostname}:5000/api/auth/login-step2`, {
+      const response = await fetch(`${API_BASE_URL}/auth/login-step2`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -106,7 +107,7 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-        const res = await fetch(`${window.location.protocol}//${window.location.hostname}:5000/api/auth/forgot-password-step1`, {
+        const res = await fetch(`${API_BASE_URL}/auth/forgot-password-step1`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: forgotEmail })
@@ -130,7 +131,7 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-        const res = await fetch(`${window.location.protocol}//${window.location.hostname}:5000/api/auth/verify-forgot-otp`, {
+        const res = await fetch(`${API_BASE_URL}/auth/verify-forgot-otp`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: forgotEmail, otp: forgotOtp })
@@ -158,7 +159,7 @@ const Login = () => {
     
     setLoading(true);
     try {
-        const res = await fetch(`${window.location.protocol}//${window.location.hostname}:5000/api/auth/reset-password`, {
+        const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: forgotEmail, otp: forgotOtp, newPassword })

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { API_BASE_URL } from "../apiConfig";
 
 const AdminUsers = () => {
   const [users, setUsers] = useState([]);
@@ -16,7 +17,7 @@ const AdminUsers = () => {
   });
 
   // ✅ HELPER: Get Base URL dynamically
-  const BASE_URL = `${window.location.protocol}//${window.location.hostname}:5000/api`;
+  const BASE_URL = `${API_BASE_URL}`;
   
   // ✅ HELPER: Get Headers with Token
   const getAuthHeaders = () => {
