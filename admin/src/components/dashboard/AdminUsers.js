@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { API_BASE_URL } from "../apiConfig";
+import { API_BASE_URL } from "../../services/apiConfig";
 
 const AdminUsers = () => {
   const [users, setUsers] = useState([]);
