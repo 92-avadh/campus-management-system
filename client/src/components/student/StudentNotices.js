@@ -8,20 +8,23 @@ const StudentNotices = () => {
   
   // Get Current User ID
   const user = JSON.parse(sessionStorage.getItem("currentUser"));
-  const studentId = user ? user.id : null;
+  const studentId = user ? (user.id || user._id) : null; // ✅ FIX: Handle both id formats
 
   // ✅ 1. FETCH DATA (Common Function)
   const fetchData = async () => {
     if (!studentId) return;
 
     try {
+      // ✅ FIX: Use Dynamic URL for Mobile/Network Access
+      const baseUrl = `${window.location.protocol}//${window.location.hostname}:5000`;
+
       // Fetch All Public Notices
-      const noticeRes = await fetch(`http://localhost:5000/api/student/notices`);
+      const noticeRes = await fetch(`${baseUrl}/api/student/notices`);
       const noticeData = await noticeRes.json();
       setNotices(Array.isArray(noticeData) ? noticeData : []);
 
       // Fetch User Profile (to get Bookmarks)
-      const profileRes = await fetch(`http://localhost:5000/api/student/profile/${studentId}`);
+      const profileRes = await fetch(`${baseUrl}/api/student/profile/${studentId}`);
       const profileData = await profileRes.json();
       if (profileData.bookmarks) {
         setSavedNotices(profileData.bookmarks);
@@ -47,9 +50,10 @@ const StudentNotices = () => {
   // ✅ 3. HANDLE BOOKMARK TOGGLE (Server-Side)
   const toggleBookmark = async (notice) => {
     const originalId = notice.noticeId || notice._id; 
+    const baseUrl = `${window.location.protocol}//${window.location.hostname}:5000`;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/student/toggle-bookmark`, {
+      const res = await fetch(`${baseUrl}/api/student/toggle-bookmark`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ studentId, noticeId: originalId })
@@ -102,21 +106,23 @@ const StudentNotices = () => {
           displayList.map((notice) => {
             const currentId = notice.noticeId || notice._id;
             const isSaved = savedNotices.some(n => n.noticeId === currentId);
+            const author = notice.sender || notice.postedBy || "Faculty";
+            const dateStr = notice.date || notice.createdAt || new Date(); // ✅ Fallback Date
 
             return (
               <div key={notice._id} className="bg-white dark:bg-gray-800 p-6 rounded-[2rem] shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all group relative overflow-hidden">
                 
                 {/* Decorative Stripe */}
-                <div className={`absolute left-0 top-0 bottom-0 w-2 ${notice.sender === "Admin" || notice.postedBy === "Admin" ? "bg-rose-500" : "bg-blue-500"}`}></div>
+                <div className={`absolute left-0 top-0 bottom-0 w-2 ${author === "Admin" ? "bg-rose-500" : "bg-blue-500"}`}></div>
 
                 <div className="flex justify-between items-start pl-4">
                   <div>
                     <div className="flex items-center gap-3 mb-2">
-                      <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${notice.sender === "Admin" || notice.postedBy === "Admin" ? "bg-rose-100 text-rose-700" : "bg-blue-100 text-blue-700"}`}>
-                        {notice.sender || notice.postedBy || "Faculty"}
+                      <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${author === "Admin" ? "bg-rose-100 text-rose-700" : "bg-blue-100 text-blue-700"}`}>
+                        {author}
                       </span>
                       <span className="text-xs font-bold text-gray-400">
-                        {new Date(notice.date || notice.createdAt).toLocaleDateString()}
+                        {new Date(dateStr).toLocaleDateString()}
                       </span>
                     </div>
                     <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-2">{notice.title}</h3>

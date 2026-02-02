@@ -15,7 +15,8 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/auth/login-step1`, {
+      // ✅ FIX: Added '/api' prefix to match server routes
+      const response = await fetch(`http://localhost:5000/api/auth/login-step1`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, password, role: "admin" })
@@ -27,6 +28,7 @@ const Login = () => {
         alert(`❌ Login Failed: ${data.message}`);
       }
     } catch (err) {
+      console.error(err);
       alert("⚠️ Server Connection Error");
     } finally {
       setLoading(false);
@@ -37,7 +39,8 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/auth/login-step2`, {
+      // ✅ FIX: Added '/api' prefix to match server routes
+      const response = await fetch(`http://localhost:5000/api/auth/login-step2`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, otp })
@@ -50,6 +53,7 @@ const Login = () => {
         alert(`❌ OTP Error: ${data.message}`);
       }
     } catch (err) {
+      console.error(err);
       alert("⚠️ Server Error during verification");
     } finally {
       setLoading(false);

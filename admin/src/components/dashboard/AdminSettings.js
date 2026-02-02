@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-// ✅ FIXED: Removed FaEnvelope and FaPhone to resolve ESLint warnings
 import { FaUserShield, FaLock, FaSave } from "react-icons/fa";
 
 const AdminSettings = () => {
@@ -14,16 +13,24 @@ const AdminSettings = () => {
   // 1. FETCH DATA
   useEffect(() => {
     const fetchProfile = async () => {
-      // ✅ Matches AdminDashboard storage key
-      const storedUser = JSON.parse(localStorage.getItem("adminUser"));
-      if (!storedUser) return;
-      setUser(storedUser);
+      const storedData = JSON.parse(localStorage.getItem("adminUser"));
+      if (!storedData) return;
+
+      // ✅ FIX: Handle the nested 'user' object structure from Login response
+      const currentUser = storedData.user || storedData;
+      setUser(currentUser);
 
       try {
-        const userId = storedUser.id || storedUser._id; 
-        // ✅ Matches route in your adminRoutes.js
+        const userId = currentUser._id || currentUser.id;
+        
+        if (!userId) {
+            console.error("No Admin ID found in storage");
+            return;
+        }
+
         const res = await fetch(`http://localhost:5000/api/admin/profile/${userId}`);
         const data = await res.json();
+        
         if (res.ok) {
           setFormData({
             email: data.email || "",
@@ -44,7 +51,7 @@ const AdminSettings = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const userId = user.id || user._id;
+      const userId = user._id || user.id; // ✅ FIX: Ensure ID is read from state
       const res = await fetch(`http://localhost:5000/api/admin/update-profile/${userId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -54,9 +61,16 @@ const AdminSettings = () => {
       if (data.success) {
         alert("✅ Admin Profile Updated!");
         setIsEditing(false);
-        // Sync local storage
-        const updatedUser = { ...user, ...formData };
-        localStorage.setItem("adminUser", JSON.stringify(updatedUser));
+        
+        // Sync local storage deeply
+        const storedData = JSON.parse(localStorage.getItem("adminUser"));
+        if (storedData.user) {
+            storedData.user = { ...storedData.user, ...formData };
+            localStorage.setItem("adminUser", JSON.stringify(storedData));
+        } else {
+            // Fallback for flat structure
+            localStorage.setItem("adminUser", JSON.stringify({ ...storedData, ...formData }));
+        }
       } else {
         alert("❌ " + data.message);
       }
@@ -74,7 +88,7 @@ const AdminSettings = () => {
     
     setLoading(true);
     try {
-      const userId = user.id || user._id;
+      const userId = user._id || user.id; // ✅ FIX: Ensure ID is read from state
       const res = await fetch(`http://localhost:5000/api/admin/change-password/${userId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },

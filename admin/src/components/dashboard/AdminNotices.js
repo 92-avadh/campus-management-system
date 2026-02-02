@@ -6,9 +6,18 @@ const AdminNotices = () => {
   const [formData, setFormData] = useState({ title: "", content: "" });
   const [loading, setLoading] = useState(false);
 
-  // Get Admin Session Data
-  const user = JSON.parse(sessionStorage.getItem("currentUser"));
+  // ✅ FIX: Get Admin Data from localStorage (Persistent Store)
+  // Logic matches Dashboard.js to ensure consistency
+  const getAdminUser = () => {
+    const raw = localStorage.getItem("adminUser");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed.user || parsed; // Handle nested 'user' object if present
+  };
+
+  const user = getAdminUser();
   const adminName = user ? user.name : "Admin";
+  // ✅ FIX: Check for both _id (MongoDB default) and id
   const adminId = user ? (user._id || user.id) : null;
 
   // 1. Fetch Notices
@@ -76,7 +85,6 @@ const AdminNotices = () => {
   };
 
   return (
-    // ✅ Adjusted to 'max-w-4xl' for Medium size
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
       {/* HEADER */}

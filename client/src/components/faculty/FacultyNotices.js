@@ -9,7 +9,8 @@ const FacultyNotices = () => {
   // ✅ GET USER ID AND NAME
   const user = JSON.parse(sessionStorage.getItem("currentUser"));
   const facultyName = user ? user.name : "Faculty";
-  const facultyId = user ? user.id : null; // <--- We need this ID for the database
+  // ✅ FIX: Use user._id (MongoDB default) or fallback to user.id
+  const facultyId = user ? (user._id || user.id) : null; 
 
   // 1. Fetch Notices
   const fetchNotices = async () => {
