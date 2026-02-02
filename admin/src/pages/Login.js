@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import logo from "../logo3.png"; 
-import { API_BASE_URL } from "../services/apiConfig";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -16,7 +15,7 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login-step1`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/auth/login-step1`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, password, role: "admin" })
@@ -38,7 +37,7 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login-step2`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/auth/login-step2`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, otp })

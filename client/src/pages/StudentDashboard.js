@@ -52,7 +52,7 @@ const StudentDashboard = () => {
   // ✅ FIX: Fetch FRESH user data (Fixes Payment & Photo State)
   const fetchUserProfile = useCallback(async (userId) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/student/profile/${userId}`);
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/student/profile/${userId}`);
       if (res.ok) {
         const freshUser = await res.json();
         setUser(freshUser);
@@ -64,7 +64,7 @@ const StudentDashboard = () => {
 
   const fetchAttendance = useCallback(async (id) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/student/attendance/${id}`);
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/student/attendance/${id}`);
       const data = await res.json();
       setAttendance(Array.isArray(data) ? data : []);
     } catch (err) { console.error(err); }
@@ -72,7 +72,7 @@ const StudentDashboard = () => {
 
   const fetchNotices = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/student/notices`);
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/student/notices`);
       const data = await res.json();
       setNotices(Array.isArray(data) ? data : []);
     } catch (err) { console.error(err); }
@@ -81,7 +81,7 @@ const StudentDashboard = () => {
   const fetchResolvedCount = useCallback(async (studentId) => {
     if (!studentId) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/student/my-doubts/${studentId}`);
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/student/my-doubts/${studentId}`);
       if (!res.ok) return;
       const data = await res.json();
       
