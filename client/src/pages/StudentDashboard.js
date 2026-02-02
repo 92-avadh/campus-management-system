@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import ThemeToggle from "../components/ThemeToggle";
 import NotificationBell from "../components/NotificationBell";
 import { FaBars, FaTimes } from "react-icons/fa"; 
+// ✅ FIX: Ensure this config points to 'http://<IP>:5000/api'
 import { API_BASE_URL } from "../apiConfig"; 
 
 // Components
@@ -49,14 +50,13 @@ const StudentDashboard = () => {
      API CALLS
   ====================== */
   
-  // ✅ FIX: Fetch FRESH user data (Fixes Payment & Photo State)
+  // ✅ FIX: Use API_BASE_URL (includes /api) for all calls
   const fetchUserProfile = useCallback(async (userId) => {
     try {
-      const res = await fetch(`http://localhost:5000/student/profile/${userId}`);
+      const res = await fetch(`${API_BASE_URL}/student/profile/${userId}`);
       if (res.ok) {
         const freshUser = await res.json();
         setUser(freshUser);
-        // Update session storage so reloading works too
         sessionStorage.setItem("currentUser", JSON.stringify(freshUser));
       }
     } catch (err) { console.error("Profile fetch error", err); }
@@ -64,7 +64,7 @@ const StudentDashboard = () => {
 
   const fetchAttendance = useCallback(async (id) => {
     try {
-      const res = await fetch(`http://localhost:5000/student/attendance/${id}`);
+      const res = await fetch(`${API_BASE_URL}/student/attendance/${id}`);
       const data = await res.json();
       setAttendance(Array.isArray(data) ? data : []);
     } catch (err) { console.error(err); }
@@ -72,7 +72,7 @@ const StudentDashboard = () => {
 
   const fetchNotices = useCallback(async () => {
     try {
-      const res = await fetch(`http://localhost:5000/student/notices`);
+      const res = await fetch(`${API_BASE_URL}/student/notices`);
       const data = await res.json();
       setNotices(Array.isArray(data) ? data : []);
     } catch (err) { console.error(err); }
@@ -81,7 +81,7 @@ const StudentDashboard = () => {
   const fetchResolvedCount = useCallback(async (studentId) => {
     if (!studentId) return;
     try {
-      const res = await fetch(`http://localhost:5000/student/my-doubts/${studentId}`);
+      const res = await fetch(`${API_BASE_URL}/student/my-doubts/${studentId}`);
       if (!res.ok) return;
       const data = await res.json();
       
@@ -107,14 +107,12 @@ const StudentDashboard = () => {
         return;
       }
       
-      // Load initial data from session (to prevent flickering)
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
       const userId = parsedUser._id || parsedUser.id;
 
       try {
         await Promise.all([
-          // ✅ FIX: Force refresh user profile immediately on load
           fetchUserProfile(userId),
           fetchAttendance(userId),
           fetchNotices(),
@@ -144,7 +142,6 @@ const StudentDashboard = () => {
     navigate("/login");
   };
 
-  // ✅ FIX: Reload page is now effective because we fetch fresh data on mount
   const handleFeePaymentSuccess = () => {
     alert("Payment Recorded! Refreshing...");
     window.location.reload(); 

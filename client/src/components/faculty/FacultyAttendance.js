@@ -4,6 +4,7 @@ import { API_BASE_URL } from "../../apiConfig";
 
 const FacultyAttendance = ({ user, subjects }) => {
   const [qr, setQr] = useState("");
+  const [code, setCode] = useState(""); // ✅ Code state
   const [active, setActive] = useState(false);
   const [subject, setSubject] = useState("");
   const [intervalId, setIntervalId] = useState(null);
@@ -18,6 +19,7 @@ const FacultyAttendance = ({ user, subjects }) => {
       });
       const data = await res.json();
       setQr(data.qrData);
+      setCode(data.code); // ✅ Set code from response
     } catch (e) { console.error(e); }
   };
 
@@ -27,7 +29,7 @@ const FacultyAttendance = ({ user, subjects }) => {
     setIntervalId(setInterval(generate, 30000));
   };
 
-  const stop = () => { setActive(false); setQr(""); clearInterval(intervalId); };
+  const stop = () => { setActive(false); setQr(""); setCode(""); clearInterval(intervalId); };
 
   return (
     <div className="max-w-xl mx-auto bg-white dark:bg-gray-800 p-10 rounded-[3rem] shadow-2xl border border-gray-100 dark:border-gray-700 text-center">
@@ -43,11 +45,18 @@ const FacultyAttendance = ({ user, subjects }) => {
         </div>
       ) : (
         <div className="animate-in zoom-in">
-          <h2 className="text-2xl font-black text-red-500 animate-pulse mb-6">LIVE SESSION</h2>
-          <div className="bg-white p-6 rounded-3xl shadow-lg inline-block mb-8 border-4 border-gray-100">
-            {qr && <QRCodeCanvas value={qr} size={220} />}
+          <h2 className="text-2xl font-black text-red-500 animate-pulse mb-2">LIVE SESSION</h2>
+          
+          {/* ✅ MANUAL CODE DISPLAY */}
+          <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700">
+             <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-1">Manual Code</p>
+             <h1 className="text-5xl font-black text-blue-600 tracking-wider">{code || "...."}</h1>
           </div>
-          <p className="text-sm text-gray-500 font-bold mb-8">Refreshing every 30s...</p>
+
+          <div className="bg-white p-4 rounded-3xl shadow-lg inline-block mb-6 border-4 border-gray-100">
+            {qr && <QRCodeCanvas value={qr} size={200} />}
+          </div>
+          <p className="text-sm text-gray-500 font-bold mb-8">Refreshes every 30s...</p>
           <button onClick={stop} className="bg-gray-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-black transition">End Session</button>
         </div>
       )}

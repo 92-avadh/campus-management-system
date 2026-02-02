@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { FaCheckCircle, FaReply } from "react-icons/fa";
-import { API_BASE_URL, BASE_URL } from "../../apiConfig";
+import { API_BASE_URL, STATIC_BASE_URL} from "../../apiConfig";
 
 // ✅ Accept 'onDoubtResolved' prop
 const FacultyDoubts = ({ onDoubtResolved }) => {
@@ -106,7 +106,7 @@ const FacultyDoubts = ({ onDoubtResolved }) => {
                  </p>
                  {doubt.file && (
                     <a 
-                      href={`${BASE_URL}/${doubt.file.replace(/\\/g, "/")}`}
+                      href={`${STATIC_BASE_URL}/${doubt.file.replace(/\\/g, "/")}`}
                       target="_blank" 
                       rel="noreferrer" 
                       className="text-xs text-blue-500 underline mt-2 block font-bold"

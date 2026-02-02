@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import ThemeToggle from "../components/ThemeToggle";
-import { FaBars, FaTimes } from "react-icons/fa"; // ✅ Icons for mobile menu
-// ✅ 1. Import the dynamic URL helper
+import { FaBars, FaTimes } from "react-icons/fa"; 
+// ✅ FIX: Import dynamic URL
 import { API_BASE_URL } from "../apiConfig"; 
-
+import FacultyTimetable from "../components/faculty/FacultyTimetable";
 // Sidebar
 import FacultySidebar from "../components/faculty/FacultySidebar";
 
@@ -25,12 +25,10 @@ const FacultyDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [pendingQueries, setPendingQueries] = useState(0);
   
-  // ✅ 2. Persist activeTab in sessionStorage
   const [activeTab, setActiveTab] = useState(() => {
     return sessionStorage.getItem("activeTab") || "dashboard";
   });
 
-  // ✅ 3. Mobile sidebar state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Data states
@@ -38,7 +36,6 @@ const FacultyDashboard = () => {
   const [subjects, setSubjects] = useState([]);
   const [myMaterials, setMyMaterials] = useState([]);
 
-  // ✅ 4. Wrap activeTab change to persist it and close sidebar on mobile
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
     sessionStorage.setItem("activeTab", tabId);
@@ -46,13 +43,13 @@ const FacultyDashboard = () => {
   };
 
   /* =====================
-     API CALLS (STABLE & DYNAMIC)
+     API CALLS (FIXED WITH API_BASE_URL)
   ====================== */
   
-  // ✅ FIX: Use API_BASE_URL and empty dependency array to stop infinite loops
   const fetchPendingCount = useCallback(async (facultyId) => {
     if (!facultyId) return;
     try {
+      // ✅ FIX: Dynamic URL
       const res = await fetch(`${API_BASE_URL}/faculty/doubts/${facultyId}`);
       if (!res.ok) return;
       const data = await res.json();
@@ -110,7 +107,6 @@ const FacultyDashboard = () => {
           fetchPendingCount(userId)
         ]);
 
-        // ✅ Polling for notifications every 60s
         intervalId = setInterval(() => {
           fetchPendingCount(userId);
         }, 60000);
@@ -142,7 +138,6 @@ const FacultyDashboard = () => {
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 relative">
       
-      {/* ✅ MOBILE OVERLAY */}
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 z-40 bg-black/50 md:hidden backdrop-blur-sm transition-opacity"
@@ -150,14 +145,12 @@ const FacultyDashboard = () => {
         ></div>
       )}
 
-      {/* ✅ RESPONSIVE SIDEBAR */}
       <aside className={`
         fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gray-800 shadow-2xl transform transition-transform duration-300 ease-in-out
         md:relative md:translate-x-0 
         ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
       `}>
         <div className="h-full flex flex-col relative">
-           {/* Mobile Close Button */}
            <div className="md:hidden absolute top-4 right-4 z-50">
              <button onClick={() => setIsSidebarOpen(false)} className="text-gray-500 hover:text-red-500 p-2">
                <FaTimes size={24} />
@@ -173,14 +166,11 @@ const FacultyDashboard = () => {
         </div>
       </aside>
 
-      {/* MAIN CONTENT */}
       <main className="flex-1 flex flex-col overflow-hidden relative">
 
-        {/* HEADER */}
         <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 px-4 md:px-8 py-4 flex justify-between items-center">
           
           <div className="flex items-center gap-4">
-            {/* ✅ Hamburger (Mobile Only) */}
             <button 
               onClick={() => setIsSidebarOpen(true)} 
               className="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
@@ -206,18 +196,17 @@ const FacultyDashboard = () => {
             >
               LOGOUT
             </button>
-            {/* Mobile Logout Icon */}
             <button onClick={handleLogout} className="md:hidden p-2 text-red-500">
                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
             </button>
           </div>
         </header>
 
-        {/* CONTENT AREA */}
         <section className="flex-1 overflow-y-auto p-4 md:p-8 [&::-webkit-scrollbar]:hidden">
           <div className="max-w-7xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {activeTab === "dashboard" && <FacultyOverview user={user} students={students} materialsCount={myMaterials.length} />}
             {activeTab === "attendance" && <FacultyAttendance user={user} subjects={subjects} />}
+            {activeTab === "timetable" && <FacultyTimetable user={user} />}
             {activeTab === "notices" && <FacultyNotices user={user} />}
             {activeTab === "material" && <FacultyMaterials user={user} subjects={subjects} myMaterials={myMaterials} fetchMyMaterials={() => fetchMyMaterials(user._id || user.id)} />}
             {activeTab === "queries" && <FacultyDoubts onDoubtResolved={() => fetchPendingCount(user._id || user.id)} />}

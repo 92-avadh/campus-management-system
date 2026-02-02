@@ -5,11 +5,13 @@ const path = require("path");
 const crypto = require("crypto"); 
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
+const Timetable = require("../models/Timetable");
 const Material = require("../models/Material");
 const Course = require("../models/Course");
-const Notification = require("../models/Notification"); // ✅ Ensure this is imported
+const Notification = require("../models/Notification");
 const Query = require("../models/Query");
 const Notice = require("../models/Notice");
+const AttendanceSession = require("../models/AttendanceSession"); 
 
 /* =======================
    MULTER CONFIG
@@ -29,25 +31,32 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({ storage, fileFilter });
 
 /* =======================
-   ✅ NOTICE OPERATIONS
+   1. GET NOTICES
 ======================= */
+router.get("/notices", async (req, res) => {
+  try {
+    const notices = await Notice.find({
+        $or: [
+            { postedBy: { $ne: "Admin" } }, 
+            { target: "faculty" },          
+            { target: "all" }               
+        ]
+    }).sort({ date: -1 });
+    res.json(notices);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching notices" });
+  }
+});
 
-// 1. ADD NOTICE & NOTIFY STUDENTS
+/* =======================
+   2. ADD NOTICE
+======================= */
 router.post("/add-notice", async (req, res) => {
   try {
     const { title, content, target, postedBy, userId } = req.body;
-    
-    if (!title || !content || !postedBy || !userId) {
-      return res.status(400).json({ message: "All fields are required" });
-    }
-
     const newNotice = new Notice({
-      title,
-      content,
-      target: target || "student", 
-      postedBy
+      title, content, target: target || "student", postedBy
     });
-
     const savedNotice = await newNotice.save();
 
     await Notification.create({
@@ -60,43 +69,62 @@ router.post("/add-notice", async (req, res) => {
       createdBy: userId, 
       createdAt: new Date()
     });
-
-    res.json({ success: true, message: "Notice Posted & Students Notified!" });
-
+    res.json({ success: true, message: "Notice Posted!" });
   } catch (err) {
-    console.error("Notice Error:", err);
     res.status(500).json({ message: "Failed to post notice" });
   }
 });
 
-// 2. GET FACULTY NOTICES
-router.get("/notices", async (req, res) => {
-  try {
-    const notices = await Notice.find().sort({ date: -1 });
-    res.json(notices);
-  } catch (err) {
-    res.status(500).json({ message: "Error fetching notices" });
-  }
-});
-
-// 3. DELETE NOTICE
 router.delete("/delete-notice/:id", async (req, res) => {
   try {
     await Notice.findByIdAndDelete(req.params.id);
-    res.json({ success: true, message: "Notice deleted" });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ message: "Error" }); }
+});
+
+/* =======================
+   3. ATTENDANCE (✅ FIXED)
+======================= */
+router.post("/generate-qr", async (req, res) => {
+  try {
+    const { course, subject, facultyId } = req.body;
+    
+    // 1. Generate numeric code
+    const uniqueCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // 2. Clear old sessions for this faculty
+    await AttendanceSession.deleteMany({ facultyId });
+
+    // 3. Create new session
+    await new AttendanceSession({
+        facultyId,
+        subject: subject, // ✅ NOW SAVES STRING (e.g. "C Programming")
+        token: uniqueCode,
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000) 
+    }).save();
+
+    // 4. Return Data
+    const data = {
+      course, subject, facultyId,
+      code: uniqueCode, 
+      timestamp: Date.now(), 
+      nonce: crypto.randomBytes(4).toString('hex') 
+    };
+    
+    res.json({ qrData: JSON.stringify(data), code: uniqueCode });
+
   } catch (err) {
-    res.status(500).json({ message: "Error deleting notice" });
+    console.error("QR Gen Error:", err);
+    res.status(500).json({ message: "Error generating QR/Code" });
   }
 });
 
 /* =======================
-   GET STUDENTS
+   4. STUDENTS & SUBJECTS
 ======================= */
 router.get("/students", async (req, res) => {
   try {
     const { department } = req.query;
-    // console.log(`Fetching students for: ${department}`); 
-
     const students = await User.find({
       role: "student",
       $or: [
@@ -104,17 +132,10 @@ router.get("/students", async (req, res) => {
         { course: { $regex: department, $options: "i" } }
       ]
     }).select("-password");
-
     res.json(students);
-  } catch (err) {
-    console.error("Error fetching students:", err);
-    res.status(500).json({ message: "Server Error" });
-  }
+  } catch (err) { res.status(500).json({ message: "Error" }); }
 });
 
-/* =======================
-   GET SUBJECTS
-======================= */
 router.get("/subjects/:courseName", async (req, res) => {
   const course = await Course.findOne({
     name: { $regex: new RegExp(req.params.courseName, "i") }
@@ -124,99 +145,75 @@ router.get("/subjects/:courseName", async (req, res) => {
 });
 
 /* =======================
-   UPLOAD MATERIAL
+   5. MATERIAL OPERATIONS
 ======================= */
 router.post("/upload-material", upload.single("material"), async (req, res) => {
   try {
     const { title, course, subject, uploadedBy } = req.body;
-
-    if (!req.file || !title || !course || !subject || !uploadedBy) {
-      return res.status(400).json({ message: "Missing fields" });
-    }
-
     const newMaterial = new Material({
-      title: title.trim(),
-      course: course.trim().toUpperCase(),
-      subject: subject.trim(),
-      uploadedBy,
+      title, course, subject, uploadedBy,
       filePath: req.file.path,
       fileName: req.file.originalname,
       fileSize: req.file.size
     });
-
     const saved = await newMaterial.save();
-
+    
     await Notification.create({
-      type: "material",
-      title: "New Study Material",
-      message: `${title} uploaded`,
-      course: saved.course,
-      subject: saved.subject,
-      relatedId: saved._id,
-      relatedModel: "Material",
-      createdBy: uploadedBy
+        type: "material",
+        title: "New Material",
+        message: `${title} uploaded`,
+        course: saved.course,
+        createdBy: uploadedBy
     });
-
     res.status(201).json(saved);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+  } catch (err) { res.status(500).json({ message: "Error" }); }
 });
 
-/* =======================
-   MY MATERIALS
-======================= */
 router.get("/my-materials/:facultyId", async (req, res) => {
-  const materials = await Material.find({
-    uploadedBy: req.params.facultyId
-  }).sort({ uploadDate: -1 });
-
+  const materials = await Material.find({ uploadedBy: req.params.facultyId }).sort({ uploadDate: -1 });
   res.json(materials);
 });
 
-/* =======================
-   DELETE MATERIAL
-======================= */
 router.delete("/material/:materialId", async (req, res) => {
-  const material = await Material.findByIdAndDelete(req.params.materialId);
-  if (!material) return res.status(404).json({ message: "Not found" });
-
-  const fs = require("fs");
-  if (fs.existsSync(material.filePath)) fs.unlinkSync(material.filePath);
-
+  await Material.findByIdAndDelete(req.params.materialId);
   res.json({ message: "Deleted" });
 });
 
 /* =======================
-   GENERATE DYNAMIC QR
+   6. DOUBTS & PROFILE
 ======================= */
-router.post("/generate-qr", async (req, res) => {
+router.get("/doubts/:facultyId", async (req, res) => {
   try {
-    const { course, subject, facultyId } = req.body;
-    const data = {
-      course,
-      subject,
-      facultyId,
-      timestamp: Date.now(), 
-      nonce: crypto.randomBytes(4).toString('hex') 
-    };
-    const qrData = JSON.stringify(data);
-    res.json({ qrData });
-  } catch (err) {
-    console.error("QR Error:", err);
-    res.status(500).json({ message: "Error generating QR" });
-  }
+    const doubts = await Query.find({ faculty: req.params.facultyId }).sort({ createdAt: -1 }); 
+    res.json(doubts);
+  } catch (err) { res.status(500).json({ message: "Error" }); }
 });
 
-/* =======================
-   PROFILE & SETTINGS
-======================= */
-router.get("/profile/:id", async (req, res) => {
+router.put("/answer-doubt/:id", async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select("-password");
-    if (!user) return res.status(404).json({ message: "User not found" });
-    res.json(user);
-  } catch (err) { res.status(500).json({ message: "Server Error" }); }
+    const { answer } = req.body;
+    const updatedQuery = await Query.findByIdAndUpdate(req.params.id, {
+      answer, status: "Resolved", resolvedAt: Date.now()
+    }, { new: true });
+
+    if (!updatedQuery) return res.status(404).json({ success: false, message: "Not found" });
+
+    await Notification.create({
+      type: "query",
+      title: "Doubt Resolved",
+      message: `Your doubt in ${updatedQuery.subject} has been answered.`,
+      course: "General",
+      recipients: [{ studentId: updatedQuery.student, read: false }] 
+    });
+    res.json({ success: true, message: "Answer sent!" });
+  } catch (err) { res.status(500).json({ success: false }); }
+});
+
+router.get("/profile/:id", async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id).select("-password");
+        res.json(user);
+    } catch (err) { res.status(500).json({ message: "Error" }); }
 });
 
 router.put("/update-profile/:id", async (req, res) => {
@@ -241,59 +238,23 @@ router.put("/change-password/:id", async (req, res) => {
     res.json({ success: true, message: "Password changed!" });
   } catch (err) { res.status(500).json({ success: false, message: "Error" }); }
 });
-
-/* =======================
-   GET PENDING DOUBTS
-======================= */
-router.get("/doubts/:facultyId", async (req, res) => {
+router.post("/upload-timetable", async (req, res) => {
   try {
-    const doubts = await Query.find({ faculty: req.params.facultyId })
-      .sort({ status: 1, createdAt: -1 }); 
-    res.json(doubts);
+    const { department, schedule } = req.body;
+
+    // Upsert: Update if exists for today, else create new
+    const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
+    const endOfDay = new Date(); endOfDay.setHours(23,59,59,999);
+
+    await Timetable.findOneAndUpdate(
+      { department, date: { $gte: startOfDay, $lte: endOfDay } },
+      { department, schedule, date: new Date() },
+      { upsert: true, new: true }
+    );
+
+    res.json({ success: true, message: "Timetable Published!" });
   } catch (err) {
-    res.status(500).json({ message: "Error fetching doubts" });
+    res.status(500).json({ message: "Error uploading timetable" });
   }
 });
-
-/* =======================
-   ANSWER DOUBT (UPDATED)
-======================= */
-router.put("/answer-doubt/:id", async (req, res) => {
-  try {
-    const { answer } = req.body;
-    
-    // 1. Update Query & Get the Updated Document
-    const updatedQuery = await Query.findByIdAndUpdate(req.params.id, {
-      answer,
-      status: "Resolved",
-      resolvedAt: Date.now()
-    }, { new: true }); // {new:true} returns the updated document
-
-    if (!updatedQuery) {
-      return res.status(404).json({ success: false, message: "Query not found" });
-    }
-
-    // 2. ✅ CREATE NOTIFICATION FOR THE STUDENT
-    // Using the 'student' ID found in the Query document
-    await Notification.create({
-      type: "query", // Matches the new enum added to Notification model
-      title: "Doubt Resolved",
-      message: `Your doubt in ${updatedQuery.subject} has been answered.`,
-      course: updatedQuery.course || "General",
-      subject: updatedQuery.subject,
-      relatedId: updatedQuery._id,
-      relatedModel: "Query",
-      createdBy: updatedQuery.faculty,
-      // Target only the student who asked
-      recipients: [{ studentId: updatedQuery.student, read: false }] 
-    });
-
-    res.json({ success: true, message: "Answer sent & Student Notified!" });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: "Failed to answer" });
-  }
-});
-
 module.exports = router;

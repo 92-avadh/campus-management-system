@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 // ✅ Added icons for file upload
 import { FaPaperPlane, FaFileUpload, FaTimes, FaHistory } from "react-icons/fa";
-import { API_BASE_URL, BASE_URL } from "../../apiConfig"; 
+import { API_BASE_URL, STATIC_BASE_URL } from "../../apiConfig"; 
 
 const StudentDoubts = ({ user }) => {
   const [activeTab, setActiveTab] = useState("ask");
@@ -22,7 +22,7 @@ const StudentDoubts = ({ user }) => {
     // Replace Windows backslashes with forward slashes
     const cleanPath = filePath.replace(/\\/g, "/");
     // Prepend the server's base URL (e.g., http://192.168.1.5:5000/uploads/file.pdf)
-    return `${BASE_URL}/${cleanPath}`;
+    return `${STATIC_BASE_URL}/${cleanPath}`;
   };
 
   // ✅ FETCH DATA - ROBUST FIX

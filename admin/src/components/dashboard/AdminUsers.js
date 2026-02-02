@@ -15,12 +15,26 @@ const AdminUsers = () => {
     department: ""
   });
 
-  // ✅ FIX: FETCH USERS (Matches /users in adminRoutes.js)
+  // ✅ HELPER: Get Base URL dynamically
+  const BASE_URL = `${window.location.protocol}//${window.location.hostname}:5000/api`;
+  
+  // ✅ HELPER: Get Headers with Token
+  const getAuthHeaders = () => {
+    const adminData = JSON.parse(localStorage.getItem("adminUser"));
+    const token = adminData?.token;
+    return {
+        "Content-Type": "application/json",
+        "Authorization": token ? `Bearer ${token}` : ""
+    };
+  };
+
+  // ✅ FIX: FETCH USERS (Includes Token)
   const fetchUsers = async () => {
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/users`);
+      const res = await fetch(`${BASE_URL}/admin/users`, {
+        headers: getAuthHeaders()
+      });
       const data = await res.json();
-      // Ensure we set an array even if the request fails
       setUsers(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Error fetching users:", err);
@@ -31,12 +45,13 @@ const AdminUsers = () => {
     fetchUsers();
   }, []);
 
-  // ✅ FIX: DELETE USER (Matches /delete-user/:id in adminRoutes.js)
+  // ✅ FIX: DELETE USER (Includes Token)
   const handleDelete = async (id) => {
     if (!window.confirm("⚠️ Are you sure? This will remove the user's access permanently.")) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/delete-user/${id}`, {
+      const res = await fetch(`${BASE_URL}/admin/delete-user/${id}`, {
         method: "DELETE",
+        headers: getAuthHeaders()
       });
       if (res.ok) {
         alert("✅ User access removed successfully.");
@@ -49,15 +64,15 @@ const AdminUsers = () => {
     }
   };
 
-  // ✅ ADD NEW USER (Matches /add-user in updated adminRoutes.js)
+  // ✅ FIX: ADD NEW USER (Includes Token)
   const handleAddUser = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/add-user`, {
+      const res = await fetch(`${BASE_URL}/admin/add-user`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify(formData),
       });
 
@@ -169,7 +184,7 @@ const AdminUsers = () => {
         </table>
       </div>
 
-      {/* MODAL (Unchanged UI) */}
+      {/* MODAL */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in">
           <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-3xl shadow-2xl p-8 border dark:border-gray-700">

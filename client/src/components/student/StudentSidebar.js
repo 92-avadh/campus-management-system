@@ -9,7 +9,7 @@ import {
   FcMoneyTransfer, 
   FcSettings 
 } from "react-icons/fc"; 
-import { BASE_URL } from "../../apiConfig"; // ✅ Imports http://localhost:5000 or your IP
+import { STATIC_BASE_URL } from "../../apiConfig"; // ✅ Imports http://localhost:5000 or your IP
 
 const StudentSidebar = ({ user, activeTab, setActiveTab, resolvedQueries }) => {
   
@@ -33,7 +33,7 @@ const StudentSidebar = ({ user, activeTab, setActiveTab, resolvedQueries }) => {
     const cleanPath = photoPath.replace(/\\/g, "/");
     
     // ✅ Result: http://localhost:5000/uploads/image-123.jpg
-    return `${BASE_URL}/${cleanPath}`;
+    return `${STATIC_BASE_URL}/${cleanPath}`;
   };
 
   return (
