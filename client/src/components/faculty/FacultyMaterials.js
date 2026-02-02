@@ -52,9 +52,9 @@ const FacultyMaterials = ({ user, subjects, myMaterials, fetchMyMaterials }) => 
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      {/* Upload Form */}
-      <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border dark:border-gray-700 h-fit">
+    <div className="grid grid-cols-1 gap-8">
+      {/* Upload Form - Now Full Width */}
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border dark:border-gray-700 h-fit">
         <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-2">
           <FaUpload className="text-blue-600" /> Upload Material
         </h3>
@@ -112,8 +112,8 @@ const FacultyMaterials = ({ user, subjects, myMaterials, fetchMyMaterials }) => 
         </form>
       </div>
 
-      {/* Materials List */}
-      <div className="lg:col-span-2 space-y-4">
+      {/* Materials List - Now Underneath */}
+      <div className="space-y-4">
         <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">My Uploads</h3>
         {myMaterials.length === 0 ? (
             <p className="text-gray-400 italic">No materials uploaded yet.</p>

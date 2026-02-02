@@ -39,7 +39,7 @@ app.use("/api/faculty", require("./routes/facultyRoutes"));
 app.use("/api/student", require("./routes/studentRoutes"));
 app.use("/api/courses", require("./routes/courseRoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
-
+app.use("/api/payment", require("./routes/paymentRoutes"));
 // Database Connection
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB Connected"))
