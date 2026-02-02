@@ -83,27 +83,22 @@ router.delete("/delete-notice/:id", async (req, res) => {
 });
 
 /* =======================
-   3. ATTENDANCE (✅ FIXED)
+   3. ATTENDANCE
 ======================= */
 router.post("/generate-qr", async (req, res) => {
   try {
     const { course, subject, facultyId } = req.body;
-    
-    // 1. Generate numeric code
     const uniqueCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // 2. Clear old sessions for this faculty
     await AttendanceSession.deleteMany({ facultyId });
 
-    // 3. Create new session
     await new AttendanceSession({
         facultyId,
-        subject: subject, // ✅ NOW SAVES STRING (e.g. "C Programming")
+        subject: subject, 
         token: uniqueCode,
         expiresAt: new Date(Date.now() + 5 * 60 * 1000) 
     }).save();
 
-    // 4. Return Data
     const data = {
       course, subject, facultyId,
       code: uniqueCode, 
@@ -238,23 +233,140 @@ router.put("/change-password/:id", async (req, res) => {
     res.json({ success: true, message: "Password changed!" });
   } catch (err) { res.status(500).json({ success: false, message: "Error" }); }
 });
+
+/* =======================
+   7. TIMETABLE
+======================= */
 router.post("/upload-timetable", async (req, res) => {
   try {
-    const { department, schedule } = req.body;
+    const { department, schedule, date } = req.body;
+    let safeDate;
+    if (date) {
+        safeDate = new Date(`${date}T12:00:00Z`);
+    } else {
+        safeDate = new Date();
+        safeDate.setHours(12, 0, 0, 0); 
+    }
+    const startOfDay = new Date(safeDate); startOfDay.setHours(0,0,0,0);
+    const endOfDay = new Date(safeDate); endOfDay.setHours(23,59,59,999);
 
-    // Upsert: Update if exists for today, else create new
-    const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
-    const endOfDay = new Date(); endOfDay.setHours(23,59,59,999);
+    const existing = await Timetable.findOne({
+      department,
+      date: { $gte: startOfDay, $lte: endOfDay }
+    });
 
-    await Timetable.findOneAndUpdate(
-      { department, date: { $gte: startOfDay, $lte: endOfDay } },
-      { department, schedule, date: new Date() },
-      { upsert: true, new: true }
-    );
+    if (existing) {
+      existing.schedule = schedule;
+      existing.date = safeDate; 
+      await existing.save();
+    } else {
+      await new Timetable({ department, date: safeDate, schedule }).save();
+    }
 
     res.json({ success: true, message: "Timetable Published!" });
   } catch (err) {
     res.status(500).json({ message: "Error uploading timetable" });
   }
 });
+
+// ✅ GET ALL UPCOMING TIMETABLES (Flattened for Faculty View)
+router.get("/timetable", async (req, res) => {
+    try {
+        const { department } = req.query;
+        
+        // Fetch all timetables from Today onwards
+        const startOfDay = new Date(); 
+        startOfDay.setHours(0,0,0,0);
+        
+        const timetables = await Timetable.find({
+            department,
+            date: { $gte: startOfDay }
+        }).sort({ date: 1 }); // Sort by date ascending
+
+        // Flatten data structure similar to student view
+        const flatSchedule = timetables.reduce((acc, curr) => {
+            const rawDate = curr.date;
+            const slots = curr.schedule.map(s => ({
+                ...s.toObject(),
+                rawDate: rawDate 
+            }));
+            return acc.concat(slots);
+        }, []);
+        
+        res.json(flatSchedule);
+    } catch (err) {
+        res.status(500).json({ message: "Error fetching" });
+    }
+});
+
+router.post("/cancel-class", async (req, res) => {
+    try {
+        const { department, date, slotId } = req.body;
+        
+        // Ensure we find the exact document by date
+        // Use the raw date string sent from frontend (ISO format)
+        let safeDate = new Date(date); 
+        const startOfDay = new Date(safeDate); startOfDay.setHours(0,0,0,0);
+        const endOfDay = new Date(safeDate); endOfDay.setHours(23,59,59,999);
+        
+        const timetable = await Timetable.findOne({
+            department,
+            date: { $gte: startOfDay, $lte: endOfDay }
+        });
+        
+        if (!timetable) return res.status(404).json({ message: "Timetable not found" });
+        
+        const slot = timetable.schedule.id(slotId);
+        if (!slot) return res.status(404).json({ message: "Slot not found" });
+        
+        slot.isCancelled = !slot.isCancelled; 
+        await timetable.save();
+        
+        if (slot.isCancelled) {
+            await Notification.create({
+                type: "alert",
+                title: `🚨 Class Cancelled: ${slot.subject}`,
+                message: `The ${slot.subject} class scheduled at ${slot.time} has been cancelled.`,
+                course: department,
+                createdAt: new Date()
+            });
+        }
+
+        res.json({ success: true, message: slot.isCancelled ? "Class Cancelled" : "Class Restored" });
+        
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Error cancelling class" });
+    }
+});
+
+router.post("/delete-class-slot", async (req, res) => {
+  try {
+    const { department, date, slotId } = req.body;
+    let safeDate = new Date(date);
+    const startOfDay = new Date(safeDate); startOfDay.setHours(0,0,0,0);
+    const endOfDay = new Date(safeDate); endOfDay.setHours(23,59,59,999);
+
+    const timetable = await Timetable.findOne({
+      department,
+      date: { $gte: startOfDay, $lte: endOfDay }
+    });
+
+    if (timetable) {
+      timetable.schedule.pull({ _id: slotId }); // Remove slot
+      // If schedule empty, remove document? Optional.
+      if (timetable.schedule.length === 0) {
+        await Timetable.findByIdAndDelete(timetable._id);
+      } else {
+        await timetable.save();
+      }
+      res.json({ success: true, message: "Class deleted!" });
+    } else {
+      res.status(404).json({ message: "Not found" });
+    }
+  } catch(err) {
+    res.status(500).json({ message: "Error deleting" });
+  }
+});
+
 module.exports = router;

@@ -4,6 +4,7 @@ const FacultySidebar = ({ user, activeTab, setActiveTab, pendingQueries }) => {
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: "🏠" },
     { id: "attendance", label: "Attendance", icon: "📷" },
+    { id: "timetable", label: "Timetable", icon: "🕒" }, // ✅ ADDED TIMETABLE
     { id: "notices", label: "Notices", icon: "📢" },
     { id: "material", label: "Materials", icon: "📚" },
     { id: "queries", label: "Student Queries", icon: "❓" }
@@ -14,7 +15,6 @@ const FacultySidebar = ({ user, activeTab, setActiveTab, pendingQueries }) => {
       {/* HEADER SECTION */}
       <div className="p-8 border-b border-slate-800">
         <div className="flex items-center gap-3 mb-6">
-           {/* ✅ ADDED: 'F' Logo Circle */}
            <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-blue-900/50">
              F
            </div>
@@ -40,7 +40,7 @@ const FacultySidebar = ({ user, activeTab, setActiveTab, pendingQueries }) => {
             <span className="text-lg opacity-80">{item.icon}</span> 
             <span className="flex-1">{item.label}</span>
             
-            {/* ✅ Red Notification Dot */}
+            {/* Notification Dot */}
             {item.id === "queries" && pendingQueries > 0 && (
                <span className="bg-rose-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-md animate-pulse">
                  {pendingQueries}
@@ -50,7 +50,7 @@ const FacultySidebar = ({ user, activeTab, setActiveTab, pendingQueries }) => {
         ))}
       </nav>
 
-      {/* SETTINGS (Logout Removed) */}
+      {/* SETTINGS */}
       <div className="p-6 border-t border-slate-800">
         <button 
           onClick={() => setActiveTab("settings")}

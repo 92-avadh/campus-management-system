@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import ThemeToggle from "../components/ThemeToggle";
 import NotificationBell from "../components/NotificationBell";
 import { FaBars, FaTimes } from "react-icons/fa"; 
-// ✅ FIX: Ensure this config points to 'http://<IP>:5000/api'
 import { API_BASE_URL } from "../apiConfig"; 
 
 // Components
@@ -15,6 +14,7 @@ import StudentAttendance from "../components/student/StudentAttendance";
 import StudentSettings from "../components/student/StudentSettings";
 import StudentDoubts from "../components/student/StudentDoubts"; 
 import StudentNotices from "../components/student/StudentNotices"; 
+import StudentTimetable from "../components/student/StudentTimetable"; // ✅ Imported Timetable
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -50,7 +50,6 @@ const StudentDashboard = () => {
      API CALLS
   ====================== */
   
-  // ✅ FIX: Use API_BASE_URL (includes /api) for all calls
   const fetchUserProfile = useCallback(async (userId) => {
     try {
       const res = await fetch(`${API_BASE_URL}/student/profile/${userId}`);
@@ -220,6 +219,7 @@ const StudentDashboard = () => {
             {activeTab === "attendance" && <StudentAttendance user={user} attendance={attendance} />}
             {activeTab === "settings" && <StudentSettings user={user} />}
             {activeTab === "doubts" && <StudentDoubts user={user} onDoubtCheck={() => fetchResolvedCount(user._id)} />} 
+            {activeTab === "timetable" && <StudentTimetable user={user} />} {/* ✅ Render Timetable */}
         </div>
       </div>
     </div>

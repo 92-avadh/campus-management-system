@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { QrReader } from "react-qr-reader";
-import { FaFilePdf } from "react-icons/fa"; // ✅ IMPORTED ICON
 import { API_BASE_URL } from "../../apiConfig";
 
 const StudentAttendance = ({ user }) => {
@@ -48,12 +47,6 @@ const StudentAttendance = ({ user }) => {
       }
     } catch (e) { alert("Server Connection Error"); }
     finally { setLoading(false); }
-  };
-
-  // ✅ NEW FUNCTION: DOWNLOAD REPORT
-  const downloadReport = () => {
-    const url = `${API_BASE_URL}/student/download-report/${user.id || user._id}`;
-    window.open(url, "_blank");
   };
 
   const renderCalendar = () => {
@@ -131,16 +124,6 @@ const StudentAttendance = ({ user }) => {
       {mode === "history" && (
         <div className="bg-white dark:bg-gray-800 p-6 rounded-[2.5rem] shadow-xl animate-in fade-in slide-in-from-bottom-4">
           
-          {/* ✅ DOWNLOAD BUTTON */}
-          <div className="flex justify-end mb-4">
-            <button 
-                onClick={downloadReport}
-                className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/20 dark:text-red-400 rounded-xl text-xs font-bold transition"
-            >
-                <FaFilePdf /> Download Report
-            </button>
-          </div>
-
           <div className="flex justify-between items-center mb-6">
             <button onClick={() => setMonth(new Date(month.setMonth(month.getMonth()-1)))} className="p-2 hover:bg-gray-100 rounded-full">◀</button>
             <h2 className="font-black text-gray-800 dark:text-white uppercase tracking-widest">{month.toLocaleString('default', { month: 'short', year: 'numeric' })}</h2>

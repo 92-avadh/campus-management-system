@@ -1,30 +1,33 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { FaBookmark, FaRegBookmark } from "react-icons/fa";
+import { API_BASE_URL } from "../../apiConfig"; // Suggesting using your config if available, otherwise fallback is below
 
 const StudentNotices = () => {
   const [notices, setNotices] = useState([]);
   const [savedNotices, setSavedNotices] = useState([]);
-  const [activeTab, setActiveTab] = useState("all"); // 'all' or 'saved'
+  const [activeTab, setActiveTab] = useState("all"); 
   
   // Get Current User ID
   const user = JSON.parse(sessionStorage.getItem("currentUser"));
-  const studentId = user ? (user.id || user._id) : null; // ✅ FIX: Handle both id formats
+  const studentId = user ? (user.id || user._id) : null; 
 
-  // ✅ 1. FETCH DATA (Common Function)
-  const fetchData = async () => {
+  // ✅ 1. FETCH DATA (Wrapped in useCallback to fix warning)
+  const fetchData = useCallback(async () => {
     if (!studentId) return;
 
     try {
-      // ✅ FIX: Use Dynamic URL for Mobile/Network Access
-      const baseUrl = `${window.location.protocol}//${window.location.hostname}:5000`;
+      // Use config or construct dynamic URL
+      const baseUrl = typeof API_BASE_URL !== 'undefined' 
+        ? API_BASE_URL 
+        : `${window.location.protocol}//${window.location.hostname}:5000`;
 
       // Fetch All Public Notices
-      const noticeRes = await fetch(`${baseUrl}/api/student/notices`);
+      const noticeRes = await fetch(`${baseUrl}/student/notices`);
       const noticeData = await noticeRes.json();
       setNotices(Array.isArray(noticeData) ? noticeData : []);
 
       // Fetch User Profile (to get Bookmarks)
-      const profileRes = await fetch(`${baseUrl}/api/student/profile/${studentId}`);
+      const profileRes = await fetch(`${baseUrl}/student/profile/${studentId}`);
       const profileData = await profileRes.json();
       if (profileData.bookmarks) {
         setSavedNotices(profileData.bookmarks);
@@ -32,28 +35,29 @@ const StudentNotices = () => {
     } catch (err) {
       console.error("Error fetching data:", err);
     }
-  };
+  }, [studentId]); // ✅ Depends on studentId
 
-  // ✅ 2. EFFECT: INITIAL FETCH + AUTO-POLLING (Every 5 Seconds)
+  // ✅ 2. EFFECT: INITIAL FETCH + AUTO-POLLING
   useEffect(() => {
-    fetchData(); // Run immediately on mount
+    fetchData(); // Run immediately
 
-    // Set up Auto-Refresh Interval
     const intervalId = setInterval(() => {
       fetchData(); 
-    }, 5000); // 5000ms = 5 Seconds
+    }, 5000); 
 
-    // Cleanup on Unmount (Stop polling)
+    // Cleanup
     return () => clearInterval(intervalId);
-  }, [studentId]);
+  }, [fetchData]); // ✅ dependency added (fetchData is now stable thanks to useCallback)
 
-  // ✅ 3. HANDLE BOOKMARK TOGGLE (Server-Side)
+  // ✅ 3. HANDLE BOOKMARK TOGGLE
   const toggleBookmark = async (notice) => {
     const originalId = notice.noticeId || notice._id; 
-    const baseUrl = `${window.location.protocol}//${window.location.hostname}:5000`;
+    const baseUrl = typeof API_BASE_URL !== 'undefined' 
+        ? API_BASE_URL 
+        : `${window.location.protocol}//${window.location.hostname}:5000`;
 
     try {
-      const res = await fetch(`${baseUrl}/api/student/toggle-bookmark`, {
+      const res = await fetch(`${baseUrl}/student/toggle-bookmark`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ studentId, noticeId: originalId })
@@ -107,7 +111,7 @@ const StudentNotices = () => {
             const currentId = notice.noticeId || notice._id;
             const isSaved = savedNotices.some(n => n.noticeId === currentId);
             const author = notice.sender || notice.postedBy || "Faculty";
-            const dateStr = notice.date || notice.createdAt || new Date(); // ✅ Fallback Date
+            const dateStr = notice.date || notice.createdAt || new Date(); 
 
             return (
               <div key={notice._id} className="bg-white dark:bg-gray-800 p-6 rounded-[2rem] shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all group relative overflow-hidden">

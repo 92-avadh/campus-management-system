@@ -18,14 +18,36 @@ const transporter = nodemailer.createTransport({
     auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
 });
 
+// ✅ UNIFIED PRO TEMPLATE
 const getEmailTemplate = (title, content) => `
 <!DOCTYPE html>
 <html>
-<body style="font-family: sans-serif; background-color: #f4f4f9; padding: 20px;">
-  <div style="max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 10px; border: 1px solid #ddd;">
-    <h2 style="color: #1e3a8a; margin-top: 0;">${title}</h2>
-    ${content}
-    <p style="color: #888; font-size: 12px; margin-top: 30px;">Campus Management System</p>
+<head>
+  <style>
+    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f3f4f6; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .header { background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%); padding: 30px; text-align: center; color: white; }
+    .header h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: 0.5px; }
+    .content { padding: 40px 30px; color: #374151; line-height: 1.6; font-size: 16px; }
+    .cred-box { background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 20px; margin: 25px 0; }
+    .cred-row { margin: 10px 0; font-family: monospace; font-size: 16px; color: #1e40af; }
+    .footer { background-color: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb; }
+    .btn { display: inline-block; background-color: #4f46e5; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div style="font-size: 40px; margin-bottom: 5px;">🏛️</div>
+      <h1>Campus Management</h1>
+    </div>
+    <div class="content">
+      <h2 style="color: #111827; margin-top: 0;">${title}</h2>
+      ${content}
+    </div>
+    <div class="footer">
+      <p>© ${new Date().getFullYear()} Campus Management System. All rights reserved.</p>
+    </div>
   </div>
 </body>
 </html>
@@ -66,35 +88,29 @@ router.post("/login", async (req, res) => {
 });
 
 /* =========================================
-   2. NOTICE MANAGEMENT (✅ FIXED)
+   2. NOTICE MANAGEMENT
 ========================================= */
 
 router.post("/add-notice", async (req, res) => {
     try {
-        const { title, content, target } = req.body; // Removed postedBy from destructuring to force it
-        
-        // ✅ 1. Default target is "student" unless specified
+        const { title, content, target } = req.body; 
         const finalTarget = target || "student";
 
         const newNotice = new Notice({ 
             title, 
             content, 
             target: finalTarget, 
-            postedBy: "Admin" // ✅ FORCE "Admin" so Faculty filter works correctly
+            postedBy: "Admin" 
         });
         
         const savedNotice = await newNotice.save();
-        
-        // ✅ 2. Send Notification ONLY to the relevant group
-        // If target is student -> "STUDENT_ALL" (Student routes will look for this)
-        // If target is faculty -> "FACULTY_ALL" (Faculty routes will look for this)
         const notificationCourse = finalTarget === "faculty" ? "FACULTY_ALL" : "STUDENT_ALL";
 
         await Notification.create({
             type: "notice",
             title: "📢 Admin Notice: " + title,
             message: content.substring(0, 50) + "...",
-            course: notificationCourse, // ✅ "STUDENT_ALL" or "FACULTY_ALL"
+            course: notificationCourse, 
             relatedId: savedNotice._id,
             relatedModel: "Notice",
             createdAt: new Date()
@@ -163,8 +179,32 @@ router.post("/approve-application/:id", async (req, res) => {
         app.status = "Approved";
         await app.save();
 
+        const mailContent = `
+          <p>Congratulations, <strong>${app.name}</strong>! 🎉</p>
+          <p>Your admission application for <strong>${app.course}</strong> has been <strong>APPROVED</strong>. We are thrilled to welcome you to our campus.</p>
+          <p>Below are your login credentials. Please log in immediately and change your password.</p>
+          
+          <div class="cred-box">
+            <div class="cred-row"><strong>User ID:</strong> ${userId}</div>
+            <div class="cred-row"><strong>Password:</strong> ${password}</div>
+          </div>
+
+          <p style="text-align: center;">
+            <a href="http://localhost:3000/login" class="btn">Login to Portal</a>
+          </p>
+        `;
+
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: app.email,
+            subject: "🎉 Admission Approved - Welcome Aboard!",
+            html: getEmailTemplate("Welcome to Campus!", mailContent)
+        };
+        await transporter.sendMail(mailOptions);
+
         res.json({ success: true, message: "Student Approved!", userId, password });
     } catch (err) {
+        console.error("Approval Error:", err);
         res.status(500).json({ message: "Approval failed" });
     }
 });
@@ -177,19 +217,22 @@ router.post("/reject-application/:id", async (req, res) => {
 
         const mailContent = `
           <p>Dear <strong>${app.name}</strong>,</p>
-          <p>Your admission application has been rejected.</p>
-          <div style="background-color: #fef2f2; padding: 15px; border-radius: 5px; border: 1px solid #ef4444; margin: 20px 0;">
-            <p style="margin: 0; font-weight: bold; color: #991b1b;">Reason:</p>
-            <p style="margin: 5px 0;">${reason || "Administrative Decision"}</p>
+          <p>Thank you for your interest in our ${app.course} program. After careful review, we regret to inform you that we are unable to offer you admission at this time.</p>
+          
+          <div style="background-color: #fee2e2; border-left: 4px solid #ef4444; padding: 15px; margin: 20px 0; border-radius: 4px;">
+            <p style="margin: 0; font-weight: bold; color: #b91c1c;">Reason for Decision:</p>
+            <p style="margin: 5px 0; color: #7f1d1d;">${reason || "Administrative Decision regarding eligibility."}</p>
           </div>
+          <p>You can re-apply later.</p> 
         `;
+
         const mailOptions = {
             from: process.env.EMAIL_USER,
             to: app.email,
-            subject: "Application Update",
-            html: getEmailTemplate("Application Status", mailContent)
+            subject: "Application Update - Campus System",
+            html: getEmailTemplate("Application Status Update", mailContent)
         };
-        transporter.sendMail(mailOptions).catch(err => console.error(err));
+        await transporter.sendMail(mailOptions);
 
         if (app.photo && fs.existsSync(app.photo)) fs.unlinkSync(app.photo);
         if (app.marksheet && fs.existsSync(app.marksheet)) fs.unlinkSync(app.marksheet);
@@ -197,6 +240,7 @@ router.post("/reject-application/:id", async (req, res) => {
         await Application.findByIdAndDelete(req.params.id);
         res.json({ success: true, message: "Application Rejected" });
     } catch (err) {
+        console.error("Rejection Error:", err);
         res.status(500).json({ message: "Rejection failed" });
     }
 });
@@ -248,15 +292,16 @@ router.get("/users", async (req, res) => {
     } catch (err) { res.status(500).json({ message: "Error" }); }
 });
 
+// ✅ FIXED: Add User Now Sends Email
 router.post("/add-user", async (req, res) => {
     try {
         const { name, email, phone, role, department } = req.body;
         const existing = await User.findOne({ email });
-        if (existing) return res.status(400).json({ message: "User exists" });
+        if (existing) return res.status(400).json({ message: "User exists with this email" });
 
         const prefix = role === "admin" ? "AD" : "FA";
         const userId = `${prefix}${Math.floor(1000 + Math.random() * 9000)}`;
-        const password = Math.random().toString(36).slice(-8);
+        const password = Math.random().toString(36).slice(-8); // Generate 8 char pass
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const newUser = new User({
@@ -264,8 +309,38 @@ router.post("/add-user", async (req, res) => {
         });
         await newUser.save();
         
-        res.json({ success: true, message: "User created" });
-    } catch (err) { res.status(500).json({ message: "Failed" }); }
+        // --- SEND EMAIL ---
+        const roleName = role === "admin" ? "Administrator" : "Faculty Member";
+        const mailContent = `
+          <p>Dear <strong>${name}</strong>,</p>
+          <p>Welcome to the team! You have been added to the Campus Management System as a <strong>${roleName}</strong>.</p>
+          <p>Here are your login credentials:</p>
+          
+          <div class="cred-box">
+            <div class="cred-row"><strong>User ID:</strong> ${userId}</div>
+            <div class="cred-row"><strong>Password:</strong> ${password}</div>
+          </div>
+
+          <p style="text-align: center;">
+            <a href="http://localhost:3000/login" class="btn">Login to Dashboard</a>
+          </p>
+          <p>Please change your password after logging in for the first time.</p>
+        `;
+
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: "🎉 Welcome to Campus System - Login Credentials",
+            html: getEmailTemplate("Account Created Successfully", mailContent)
+        };
+
+        await transporter.sendMail(mailOptions);
+
+        res.json({ success: true, message: "User created & Email sent!" });
+    } catch (err) { 
+        console.error("Add User Error:", err);
+        res.status(500).json({ message: "User created but Email failed (Check Logs)" }); 
+    }
 });
 
 router.delete("/delete-user/:id", async (req, res) => {

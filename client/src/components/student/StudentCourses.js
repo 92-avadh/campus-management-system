@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { API_BASE_URL } from "../../apiConfig"; // ✅ Import Dynamic API URL
 
 const StudentCourses = ({ user }) => {
   const [subjects, setSubjects] = useState([]);
@@ -9,11 +10,14 @@ const StudentCourses = ({ user }) => {
   // Initial Fetch
   useEffect(() => {
     if (user?.isFeePaid && user?.course) {
+      // Robust course normalization
       const normalizedCourse = user.course.includes("BCA") ? "BCA" : user.course;
-      fetch(`http://localhost:5000/api/courses/${encodeURIComponent(normalizedCourse)}`)
+      
+      // ✅ FIX: Use API_BASE_URL instead of localhost
+      fetch(`${API_BASE_URL}/courses/${encodeURIComponent(normalizedCourse)}`)
         .then((res) => res.json())
         .then((data) => { if (data.subjects) setSubjects(data.subjects); })
-        .catch((err) => console.error(err));
+        .catch((err) => console.error("Error fetching subjects:", err));
     }
   }, [user]);
 
@@ -22,20 +26,26 @@ const StudentCourses = ({ user }) => {
     setSelectedSubject(subject);
     setLoadingMaterials(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/student/materials/${encodeURIComponent(user.course.toUpperCase().trim())}/${encodeURIComponent(subject)}`);
+      // ✅ FIX: Use API_BASE_URL
+      const response = await fetch(`${API_BASE_URL}/student/materials/${encodeURIComponent(user.course.toUpperCase().trim())}/${encodeURIComponent(subject)}`);
       const data = await response.json();
       setMaterials(Array.isArray(data) ? data : []);
-    } catch (error) { setMaterials([]); } 
+    } catch (error) { 
+      console.error("Error fetching materials:", error);
+      setMaterials([]); 
+    } 
     finally { setLoadingMaterials(false); }
   };
 
   // Download Logic
   const handleDownload = async (id) => {
     try {
-      await fetch(`http://localhost:5000/api/student/view-material/${id}`, {
+      // ✅ FIX: Use API_BASE_URL
+      await fetch(`${API_BASE_URL}/student/view-material/${id}`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ studentId: user.id || user._id })
       });
-      window.open(`http://localhost:5000/api/student/download/${id}`, "_blank");
+      // ✅ FIX: Use API_BASE_URL
+      window.open(`${API_BASE_URL}/student/download/${id}`, "_blank");
     } catch (e) { console.error(e); }
   };
 

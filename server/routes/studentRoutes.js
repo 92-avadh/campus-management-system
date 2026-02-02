@@ -15,20 +15,41 @@ const Notice = require("../models/Notice");
 const Notification = require("../models/Notification"); 
 const AttendanceSession = require("../models/AttendanceSession"); 
 const Timetable = require("../models/Timetable");
-const PDFDocument = require("pdfkit");
-// --- EMAIL CONFIGURATION ---
+
+// EMAIL CONFIG
 const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
 });
 
-const emailStyle = (content) => `
-<div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; background-color: #ffffff;">
-  <div style="background-color: #881337; padding: 30px; text-align: center;">
-    <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800;">🎓 Campus System</h1>
+// ✅ UNIFIED EMAIL TEMPLATE
+const getHtmlTemplate = (title, bodyContent) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background-color: #f8fafc; padding: 0; margin: 0; }
+    .container { max-width: 600px; margin: 30px auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+    .header { background: #0f172a; padding: 40px; text-align: center; color: white; }
+    .content { padding: 40px; color: #334155; line-height: 1.7; }
+    .status-badge { background: #e0f2fe; color: #0369a1; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 14px; display: inline-block; margin: 10px 0; }
+    .footer { background: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #64748b; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div style="font-size: 48px; margin-bottom: 10px;">🎓</div>
+      <h1 style="margin: 0; font-size: 22px;">Campus Admission</h1>
+    </div>
+    <div class="content">
+      <h2 style="color: #0f172a; margin-top: 0;">${title}</h2>
+      ${bodyContent}
+    </div>
+    <div class="footer">© ${new Date().getFullYear()} Campus Management System</div>
   </div>
-  <div style="padding: 40px 30px; color: #334155; line-height: 1.6;">${content}</div>
-</div>
+</body>
+</html>
 `;
 
 // --- MULTER CONFIG ---
@@ -55,21 +76,38 @@ router.post("/apply", upload.fields([{ name: "photo" }, { name: "marksheet" }]),
       if (pendingApp) return res.status(400).json({ message: "Application already submitted!" });
 
       const newApp = new Application(req.body);
-      if (req.files['photo']) newApp.photo = req.files['photo'][0].path;
-      if (req.files['marksheet']) newApp.marksheet = req.files['marksheet'][0].path;
+      if (req.files['photo']) newApp.photo = req.files['photo'][0].path.replace(/\\/g, "/");
+      if (req.files['marksheet']) newApp.marksheet = req.files['marksheet'][0].path.replace(/\\/g, "/");
       
       await newApp.save();
+
+      // ✅ Redesigned Application Email
+      const mailContent = `
+        <p>Dear <strong>${name}</strong>,</p>
+        <p>Thank you for choosing our campus! We have successfully received your application for the <strong>${course}</strong> program.</p>
+        <div style="text-align: center; margin: 25px 0;">
+           <span class="status-badge">📄 Application Status: Pending Review</span>
+        </div>
+        <p>Our admin team will review your details and documents shortly. You will receive an email update once a decision has been made.</p>
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+        <p style="font-size: 14px; color: #64748b;"><strong>Details Submitted:</strong><br>Phone: ${phone}<br>Email: ${email}</p>
+      `;
 
       const mailOptions = {
         from: process.env.EMAIL_USER,
         to: email,
-        subject: "✅ Application Received",
-        html: emailStyle(`<p>Dear <strong>${name}</strong>,<br>Your application for <strong>${course}</strong> has been received.</p>`)
+        subject: "✅ Application Received - Campus System",
+        html: getHtmlTemplate("Application Submitted Successfully", mailContent)
       };
-      transporter.sendMail(mailOptions, (err) => { if (err) console.error("Email Error:", err); });
+      
+      // ✅ AWAIT EMAIL
+      await transporter.sendMail(mailOptions);
 
       res.json({ message: "Application submitted successfully!" });
-    } catch (err) { res.status(500).json({ message: "Application failed" }); }
+    } catch (err) { 
+        console.error("Apply Error:", err);
+        res.status(500).json({ message: "Application failed (Check Email)" }); 
+    }
 });
 
 /* =========================================
@@ -79,7 +117,9 @@ router.get("/materials/:course/:subject", async (req, res) => {
   try {
     const rawCourse = decodeURIComponent(req.params.course).toUpperCase();
     const decodedSubject = decodeURIComponent(req.params.subject).trim();
-    let normalizedCourse = rawCourse.includes("BCA") ? "BCA" : rawCourse.includes("BBA") ? "BBA" : "BCOM";
+    let normalizedCourse = "BCA";
+    if (rawCourse.includes("BBA")) normalizedCourse = "BBA";
+    else if (rawCourse.includes("COM")) normalizedCourse = "BCOM";
 
     const materials = await Material.find({ course: normalizedCourse, subject: decodedSubject })
       .populate("uploadedBy", "name").sort({ uploadDate: -1 });
@@ -89,23 +129,19 @@ router.get("/materials/:course/:subject", async (req, res) => {
 });
 
 /* =========================================
-   3. ATTENDANCE OPERATIONS (✅ FIXED)
+   3. ATTENDANCE OPERATIONS
 ========================================= */
 router.post("/mark-attendance", async (req, res) => {
   try {
     const { studentId, qrData, manualCode } = req.body;
     let subject;
 
-    // --- CASE A: MANUAL CODE ---
     if (manualCode) {
         const session = await AttendanceSession.findOne({ token: manualCode });
         if (!session) return res.status(400).json({ message: "Invalid Code" });
         if (new Date() > session.expiresAt) return res.status(400).json({ message: "Code Expired" });
-        
-        // ✅ NOW READS 'subject' (String) from DB session
         subject = session.subject; 
     } 
-    // --- CASE B: QR SCAN ---
     else if (qrData) {
         try { 
             const parsed = JSON.parse(qrData); 
@@ -116,7 +152,6 @@ router.post("/mark-attendance", async (req, res) => {
         return res.status(400).json({ message: "No data provided" });
     }
 
-    // Mark Attendance
     const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
     const endOfDay = new Date(); endOfDay.setHours(23,59,59,999);
     
@@ -130,7 +165,6 @@ router.post("/mark-attendance", async (req, res) => {
     res.json({ success: true, message: `Present marked for ${subject}!` });
 
   } catch (err) { 
-    console.error(err);
     res.status(500).json({ message: "Attendance Error" }); 
   }
 });
@@ -253,7 +287,7 @@ router.get("/my-doubts/:studentId", async (req, res) => {
 });
 
 /* =========================================
-   7. UTILS
+   7. UTILS & TIMETABLE
 ========================================= */
 router.get("/notices", async (req, res) => {
   try {
@@ -302,7 +336,7 @@ router.get("/timetable/:course", async (req, res) => {
     const endOfDay = new Date(); endOfDay.setHours(23,59,59,999);
 
     const timetable = await Timetable.findOne({
-      department: req.params.course, // Assumes course matches department (e.g. BCA)
+      department: req.params.course, 
       date: { $gte: startOfDay, $lte: endOfDay }
     });
 
@@ -312,38 +346,29 @@ router.get("/timetable/:course", async (req, res) => {
   }
 });
 
-// GET: Download Attendance Report
-router.get("/download-report/:studentId", async (req, res) => {
-  try {
-    const student = await User.findById(req.params.studentId);
-    const records = await Attendance.find({ studentId: req.params.studentId }).sort({ date: -1 });
-
-    const doc = new PDFDocument();
-
-    // Stream PDF to client
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename=Attendance_Report_${student.name}.pdf`);
-    doc.pipe(res);
-
-    // PDF Content
-    doc.fontSize(20).text("Campus Attendance Report", { align: "center" });
-    doc.moveDown();
-    doc.fontSize(12).text(`Name: ${student.name}`);
-    doc.text(`Course: ${student.course}`);
-    doc.text(`Generated: ${new Date().toLocaleDateString()}`);
-    doc.moveDown();
-
-    // Table Header
-    doc.fontSize(10).text("Date                | Subject             | Status", { underline: true });
-
-    // Table Rows
-    records.forEach(rec => {
-      doc.text(`${new Date(rec.date).toLocaleDateString()}      | ${rec.subject.padEnd(20)} | ${rec.status}`);
-    });
-
-    doc.end();
-  } catch (err) {
-    res.status(500).json({ message: "PDF Generation Failed" });
-  }
+// ✅ ADDED: PAYMENT ROUTE
+router.post("/pay-fees", async (req, res) => {
+    try {
+      const { studentId, amount, semester } = req.body;
+      
+      const student = await User.findById(studentId);
+      if (!student) return res.status(404).json({ message: "Student not found" });
+  
+      // Simulate Payment Record
+      await Notification.create({
+          type: "payment", // ✅ Uses valid enum 'payment'
+          title: `💰 Fee Payment Successful`,
+          message: `Received ₹${amount} for Semester ${semester}`,
+          recipients: [{ studentId: student._id }],
+          createdAt: new Date()
+      });
+  
+      res.json({ success: true, message: "Payment Recorded Successfully!" });
+  
+    } catch (err) {
+      console.error("Payment Error:", err);
+      res.status(500).json({ message: "Payment Transaction Failed" });
+    }
 });
+
 module.exports = router;

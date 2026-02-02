@@ -2,19 +2,17 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import ThemeToggle from "../components/ThemeToggle";
 import { FaBars, FaTimes } from "react-icons/fa"; 
-// ✅ FIX: Import dynamic URL
 import { API_BASE_URL } from "../apiConfig"; 
-import FacultyTimetable from "../components/faculty/FacultyTimetable";
+
 // Sidebar
 import FacultySidebar from "../components/faculty/FacultySidebar";
 
-// Dashboard Sections
+// Components
+import FacultyTimetable from "../components/faculty/FacultyTimetable";
 import FacultyOverview from "../components/faculty/FacultyOverview";
 import FacultyAttendance from "../components/faculty/FacultyAttendance";
 import FacultyNotices from "../components/faculty/FacultyNotices";
 import FacultyMaterials from "../components/faculty/FacultyMaterials";
-
-// Pages
 import FacultyDoubts from "../components/faculty/FacultyDoubts";
 import FacultySettings from "../components/faculty/FacultySettings";
 
@@ -33,7 +31,7 @@ const FacultyDashboard = () => {
 
   // Data states
   const [students, setStudents] = useState([]);
-  const [subjects, setSubjects] = useState([]);
+  const [subjects, setSubjects] = useState([]); // ✅ This holds the subjects list
   const [myMaterials, setMyMaterials] = useState([]);
 
   const handleTabChange = (tabId) => {
@@ -43,13 +41,11 @@ const FacultyDashboard = () => {
   };
 
   /* =====================
-     API CALLS (FIXED WITH API_BASE_URL)
+     API CALLS
   ====================== */
-  
   const fetchPendingCount = useCallback(async (facultyId) => {
     if (!facultyId) return;
     try {
-      // ✅ FIX: Dynamic URL
       const res = await fetch(`${API_BASE_URL}/faculty/doubts/${facultyId}`);
       if (!res.ok) return;
       const data = await res.json();
@@ -206,7 +202,10 @@ const FacultyDashboard = () => {
           <div className="max-w-7xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {activeTab === "dashboard" && <FacultyOverview user={user} students={students} materialsCount={myMaterials.length} />}
             {activeTab === "attendance" && <FacultyAttendance user={user} subjects={subjects} />}
-            {activeTab === "timetable" && <FacultyTimetable user={user} />}
+            
+            {/* ✅ FIXED: Pass 'subjects' prop here */}
+            {activeTab === "timetable" && <FacultyTimetable user={user} subjects={subjects} />} 
+            
             {activeTab === "notices" && <FacultyNotices user={user} />}
             {activeTab === "material" && <FacultyMaterials user={user} subjects={subjects} myMaterials={myMaterials} fetchMyMaterials={() => fetchMyMaterials(user._id || user.id)} />}
             {activeTab === "queries" && <FacultyDoubts onDoubtResolved={() => fetchPendingCount(user._id || user.id)} />}

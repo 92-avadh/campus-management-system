@@ -1,71 +1,46 @@
 const mongoose = require("mongoose");
 
-const notificationSchema = new mongoose.Schema(
-  {
-    type: {
-      type: String,
-      // ✅ ADDED "query" to the allowed types
-      enum: ["material", "attendance", "notice", "query"],
-      required: true
-    },
-
-    title: {
-      type: String,
-      required: true
-    },
-
-    message: {
-      type: String,
-      required: true
-    },
-
-    course: {
-      type: String,
-      required: true
-    },
-
-    subject: {
-      type: String
-    },
-
-    relatedId: {
-      type: mongoose.Schema.Types.ObjectId
-    },
-
-    relatedModel: {
-      type: String
-    },
-
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User"
-    },
-
-    recipients: [
-      {
-        studentId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User"
-        },
-        read: {
-          type: Boolean,
-          default: false
-        },
-        readAt: Date
-      }
-    ]
+const NotificationSchema = new mongoose.Schema({
+  title: { 
+    type: String, 
+    required: true 
   },
-  {
-    timestamps: true 
+  message: { 
+    type: String 
+  },
+  type: {
+    type: String,
+    // ✅ FIX: Added 'alert' (for cancellations) and 'payment' (for fees) to the list
+    enum: ["notice", "material", "query", "alert", "payment", "general"], 
+    required: true
+  },
+  course: { 
+    type: String 
+  }, // e.g., 'ALL', 'STUDENT_ALL', 'BCA', or specific Department
+  
+  // Optional: Link to a specific object (Notice ID, Material ID, etc.)
+  relatedId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    refPath: 'relatedModel' 
+  },
+  relatedModel: { 
+    type: String 
+  },
+
+  // For specific targeted notifications (optional)
+  recipients: [{
+      studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      read: { type: Boolean, default: false }
+  }],
+
+  createdBy: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User' 
+  },
+  createdAt: { 
+    type: Date, 
+    default: Date.now 
   }
-);
+});
 
-/* ===========================
-   🔥 AUTO DELETE AFTER 2 DAYS
-=========================== */
-notificationSchema.index(
-  { createdAt: 1 },
-  { expireAfterSeconds: 60 * 60 * 24 * 2 } 
-);
-
-module.exports = mongoose.model("Notification", notificationSchema);
+module.exports = mongoose.model("Notification", NotificationSchema);
