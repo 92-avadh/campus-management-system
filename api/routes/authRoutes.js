@@ -5,20 +5,20 @@ const nodemailer = require("nodemailer");
 const jwt = require("jsonwebtoken"); 
 const User = require("../models/User");
 
-// EMAIL CONFIG
-// ✅ UPDATED TRANSPORTER FOR VERCEL
+// EMAIL CONFIG (Correct for Vercel)
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 587,              // MUST use 587 for Vercel
-  secure: false,          // MUST be false for port 587
+  port: 587,              
+  secure: false,          
   auth: { 
     user: process.env.EMAIL_USER, 
     pass: process.env.EMAIL_PASS 
   },
   tls: {
-    rejectUnauthorized: false // Fixes SSL errors
+    rejectUnauthorized: false
   }
 });
+
 // ✅ UNIFIED EMAIL TEMPLATE BUILDER
 const getHtmlTemplate = (title, bodyContent) => `
 <!DOCTYPE html>
@@ -57,7 +57,7 @@ const getHtmlTemplate = (title, bodyContent) => `
 //      EXISTING LOGIN ROUTES
 // ==============================
 
-// LOGIN STEP 1: Validate ID & Password -> Send OTP (OPTIMIZED)
+// LOGIN STEP 1: Validate ID & Password -> Send OTP
 router.post("/login-step1", async (req, res) => {
   try {
     let { userId, password, role } = req.body;
@@ -83,24 +83,22 @@ router.post("/login-step1", async (req, res) => {
 
     await User.updateOne({ _id: user._id }, { $set: { otp, otpExpires } });
 
-    // ✅ DEBUG LOG: See exactly where the email is going in Vercel Logs
     console.log(`📧 Preparing to send OTP to: ${user.email}`);
 
     const mailOptions = {
-      from: "Campus Admin <sdjic.office01@gmail.com>", // ✅ CHANGED: Uses your real Gmail to prevent blocking
+      from: `Campus Admin <${process.env.EMAIL_USER}>`, // ✅ Uses your real Gmail
       to: user.email,
       subject: "🔐 Login Verification",
       html: getHtmlTemplate("Login OTP", `
         <p>Hello ${user.name},</p>
         <p>Your OTP is:</p>
         <div class="otp-box">${otp}</div>
+        <p style="font-size:12px; color:gray;">Sent via: ${process.env.EMAIL_USER}</p>
       `)
     };
     
-    // 1. Send Response to User
     res.json({ message: "OTP Sent", email: user.email });
 
-    // 2. Send Email & Log Result
     transporter.sendMail(mailOptions)
       .then(info => console.log("✅ Email sent successfully:", info.messageId))
       .catch(err => console.error("❌ Email FAILED:", err));
@@ -111,7 +109,7 @@ router.post("/login-step1", async (req, res) => {
   }
 });
 
-// LOGIN STEP 2: Verify OTP -> Issue Token
+// LOGIN STEP 2: Verify OTP
 router.post("/login-step2", async (req, res) => {
   try {
     let { userId, otp } = req.body;
@@ -139,7 +137,7 @@ router.post("/login-step2", async (req, res) => {
 //    FORGOT PASSWORD ROUTES
 // ==============================
 
-// STEP 1: Send OTP to Email (OPTIMIZED)
+// STEP 1: Send OTP to Email
 router.post("/forgot-password-step1", async (req, res) => {
   try {
     const { email } = req.body;
@@ -151,37 +149,31 @@ router.post("/forgot-password-step1", async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpires = Date.now() + 10 * 60 * 1000; 
 
-    // Save to DB
     await User.updateOne({ _id: user._id }, { $set: { otp, otpExpires } });
 
-    // Prepare Email Content
-    const mailContent = `
-      <p>Hi <strong>${user.name}</strong>,</p>
-      <p>You requested to reset your password. Use the code below to proceed:</p>
-      <div class="otp-box">${otp}</div>
-      <p>⚠️ This code expires in <strong>10 minutes</strong>. Do not share it with anyone.</p>
-    `;
+    console.log(`📧 Sending Reset OTP to: ${user.email}`);
 
     const mailOptions = {
-      from: '"Campus Support" <no-reply@campus.edu>',
+      from: `Campus Support <${process.env.EMAIL_USER}>`, // ✅ FIXED: Uses real Gmail
       to: email,
       subject: "🔑 Password Reset Request",
-      html: getHtmlTemplate("Reset Your Password", mailContent)
+      html: getHtmlTemplate("Reset Your Password", `
+        <p>Hi <strong>${user.name}</strong>,</p>
+        <p>You requested to reset your password. Use the code below:</p>
+        <div class="otp-box">${otp}</div>
+        <p>⚠️ This code expires in 10 minutes.</p>
+      `)
     };
     
-    // 🚀 FIRE AND FORGET: Send Response FIRST
     res.json({ success: true, message: "OTP sent to your email" });
 
-    // Send Email in Background
-    transporter.sendMail(mailOptions).catch(err => {
-        console.error("❌ Forgot Password Email Failed:", err);
-    });
+    transporter.sendMail(mailOptions)
+      .then(info => console.log("✅ Reset Email sent:", info.messageId))
+      .catch(err => console.error("❌ Reset Email FAILED:", err));
 
   } catch (err) {
     console.error("Forgot Pass Error:", err);
-    if (!res.headersSent) {
-        res.status(500).json({ message: "Server Error" });
-    }
+    if (!res.headersSent) res.status(500).json({ message: "Server Error" });
   }
 });
 
@@ -189,31 +181,23 @@ router.post("/forgot-password-step1", async (req, res) => {
 router.post("/verify-forgot-otp", async (req, res) => {
     try {
         const { email, otp } = req.body;
-        if (!email || !otp) return res.status(400).json({ message: "Missing fields" });
-
         const user = await User.findOne({ email });
-        if (!user) return res.status(404).json({ message: "User not found" });
-
-        if (user.otp !== otp) return res.status(400).json({ message: "Invalid OTP" });
-        if (Date.now() > user.otpExpires) return res.status(400).json({ message: "OTP Expired" });
-
+        if (!user || user.otp !== otp || Date.now() > user.otpExpires) {
+            return res.status(400).json({ message: "Invalid or Expired OTP" });
+        }
         res.json({ success: true, message: "OTP Verified" });
-    } catch (err) {
-        res.status(500).json({ message: "Server Error" });
-    }
+    } catch (err) { res.status(500).json({ message: "Server Error" }); }
 });
 
 // STEP 3: Reset Password
 router.post("/reset-password", async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
-    if (!email || !otp || !newPassword) return res.status(400).json({ message: "All fields are required" });
-
     const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    if (user.otp !== otp) return res.status(400).json({ message: "Invalid or Expired OTP" });
-    if (Date.now() > user.otpExpires) return res.status(400).json({ message: "OTP Expired" });
+    
+    if (!user || user.otp !== otp || Date.now() > user.otpExpires) {
+        return res.status(400).json({ message: "Invalid or Expired OTP" });
+    }
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
@@ -226,44 +210,24 @@ router.post("/reset-password", async (req, res) => {
         }
     );
 
-    res.json({ success: true, message: "Password updated successfully! Please login." });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server Error" });
-  }
+    res.json({ success: true, message: "Password updated successfully!" });
+  } catch (err) { res.status(500).json({ message: "Server Error" }); }
 });
-// --- DEBUGGING ROUTE (Add this to test email) ---
+
+// TEST ROUTE
 router.get("/test-email", async (req, res) => {
   try {
-    // 1. Check if Variables exist
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      return res.status(500).json({ 
-        message: "❌ Env Variables Missing", 
-        user: process.env.EMAIL_USER ? "Set" : "Missing",
-        pass: process.env.EMAIL_PASS ? "Set" : "Missing"
-      });
-    }
-
-    // 2. Verify Connection
     await transporter.verify();
-
-    // 3. Send Test Email
-    const info = await transporter.sendMail({
+    await transporter.sendMail({
       from: process.env.EMAIL_USER,
-      to: process.env.EMAIL_USER, // Sends to yourself
-      subject: "✅ Test Email from Vercel",
-      text: "If you are reading this, your email configuration is PERFECT!"
+      to: process.env.EMAIL_USER,
+      subject: "✅ Test Email",
+      text: "Configuration is working!"
     });
-
-    res.json({ success: true, message: "Email Sent!", info });
-
+    res.json({ success: true, message: "Email Sent!" });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: "❌ Email Failed", 
-      error: error.message 
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
+
 module.exports = router;

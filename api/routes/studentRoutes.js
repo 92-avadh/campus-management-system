@@ -17,10 +17,18 @@ const Notification = require("../models/Notification");
 const AttendanceSession = require("../models/AttendanceSession"); 
 const Timetable = require("../models/Timetable");
 
-// EMAIL CONFIG
+// ✅ CORRECT EMAIL CONFIG FOR VERCEL (Port 587)
 const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
+  auth: { 
+    user: process.env.EMAIL_USER, 
+    pass: process.env.EMAIL_PASS 
+  },
+  tls: {
+    rejectUnauthorized: false
+  }
 });
 
 // CLOUDINARY CONFIG
@@ -46,24 +54,17 @@ const getHtmlTemplate = (title, bodyContent) => `
 <html>
 <head>
   <style>
-    body { font-family: 'Segoe UI', sans-serif; background-color: #f8fafc; padding: 0; margin: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background-color: #f8fafc; margin: 0; padding: 0; }
     .container { max-width: 600px; margin: 30px auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
     .header { background: #0f172a; padding: 40px; text-align: center; color: white; }
-    .content { padding: 40px; color: #334155; line-height: 1.7; }
-    .status-badge { background: #e0f2fe; color: #0369a1; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 14px; display: inline-block; margin: 10px 0; }
+    .content { padding: 40px; color: #334155; }
     .footer { background: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #64748b; }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <div style="font-size: 48px; margin-bottom: 10px;">🎓</div>
-      <h1 style="margin: 0; font-size: 22px;">Campus Admission</h1>
-    </div>
-    <div class="content">
-      <h2 style="color: #0f172a; margin-top: 0;">${title}</h2>
-      ${bodyContent}
-    </div>
+    <div class="header"><h1>🎓 Admission</h1></div>
+    <div class="content"><h2>${title}</h2>${bodyContent}</div>
     <div class="footer">© ${new Date().getFullYear()} Campus Management System</div>
   </div>
 </body>
@@ -71,11 +72,11 @@ const getHtmlTemplate = (title, bodyContent) => `
 `;
 
 /* =========================================
-   1. APPLY FOR ADMISSION (UPDATED)
+   1. APPLY FOR ADMISSION
 ========================================= */
 router.post("/apply", upload.fields([{ name: "photo" }, { name: "marksheet" }]), async (req, res) => {
     try {
-      const { email, name, phone, course, address } = req.body;
+      const { email, name, phone, course } = req.body;
       const existingStudent = await User.findOne({ email });
       if (existingStudent) return res.status(400).json({ message: "You are already enrolled as a student." });
 
@@ -83,8 +84,6 @@ router.post("/apply", upload.fields([{ name: "photo" }, { name: "marksheet" }]),
       if (pendingApp) return res.status(400).json({ message: "Application already submitted!" });
 
       const newApp = new Application(req.body);
-      
-      // ✅ FIX: Use req.files...path (Cloudinary URL)
       if (req.files['photo']) newApp.photo = req.files['photo'][0].path;
       if (req.files['marksheet']) newApp.marksheet = req.files['marksheet'][0].path;
       
@@ -93,20 +92,15 @@ router.post("/apply", upload.fields([{ name: "photo" }, { name: "marksheet" }]),
       // Email Notification
       const mailContent = `
         <p>Dear <strong>${name}</strong>,</p>
-        <p>Thank you for choosing our campus! We have successfully received your application for the <strong>${course}</strong> program.</p>
-        <div style="text-align: center; margin: 25px 0;">
-           <span class="status-badge">📄 Application Status: Pending Review</span>
-        </div>
-        <p>Our admin team will review your details and documents shortly. You will receive an email update once a decision has been made.</p>
-        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-        <p style="font-size: 14px; color: #64748b;"><strong>Details Submitted:</strong><br>Phone: ${phone}<br>Email: ${email}</p>
+        <p>We received your application for <strong>${course}</strong>.</p>
+        <p>Our team will review it shortly.</p>
       `;
 
       const mailOptions = {
-        from: process.env.EMAIL_USER,
+        from: `Campus Admissions <${process.env.EMAIL_USER}>`, // ✅ Uses real Gmail
         to: email,
-        subject: "✅ Application Received - Campus System",
-        html: getHtmlTemplate("Application Submitted Successfully", mailContent)
+        subject: "✅ Application Received",
+        html: getHtmlTemplate("Application Submitted", mailContent)
       };
       
       await transporter.sendMail(mailOptions);
