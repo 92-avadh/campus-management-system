@@ -87,7 +87,7 @@ router.post("/login-step1", async (req, res) => {
     console.log(`📧 Preparing to send OTP to: ${user.email}`);
 
     const mailOptions = {
-      from: `Campus Admin <${process.env.EMAIL_USER}>`, // ✅ CHANGED: Uses your real Gmail to prevent blocking
+      from: "Campus Admin <sdjic.office01@gmail.com>", // ✅ CHANGED: Uses your real Gmail to prevent blocking
       to: user.email,
       subject: "🔐 Login Verification",
       html: getHtmlTemplate("Login OTP", `
