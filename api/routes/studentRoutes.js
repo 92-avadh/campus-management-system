@@ -17,7 +17,9 @@ const Notification = require("../models/Notification");
 const AttendanceSession = require("../models/AttendanceSession"); 
 const Timetable = require("../models/Timetable");
 
-// ✅ CORRECT EMAIL CONFIG FOR VERCEL (Port 587)
+// =========================================
+// EMAIL CONFIGURATION
+// =========================================
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 587,
@@ -31,7 +33,9 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// CLOUDINARY CONFIG
+// =========================================
+// CLOUDINARY CONFIGURATION
+// =========================================
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -42,13 +46,14 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: "campus_admissions",
-    allowed_formats: ["jpg", "png", "jpeg", "pdf"],
+    allowed_formats: ["jpg", "png", "jpeg", "pdf", "doc", "docx"],
     resource_type: "auto"
   }
 });
 
 const upload = multer({ storage });
 
+// HTML Email Template Helper
 const getHtmlTemplate = (title, bodyContent) => `
 <!DOCTYPE html>
 <html>
@@ -97,13 +102,13 @@ router.post("/apply", upload.fields([{ name: "photo" }, { name: "marksheet" }]),
       `;
 
       const mailOptions = {
-        from: `Campus Admissions <${process.env.EMAIL_USER}>`, // ✅ Uses real Gmail
+        from: `Campus Admissions <${process.env.EMAIL_USER}>`, 
         to: email,
         subject: "✅ Application Received",
         html: getHtmlTemplate("Application Submitted", mailContent)
       };
       
-      await transporter.sendMail(mailOptions);
+      transporter.sendMail(mailOptions).catch(err => console.log("Email Failed", err));
 
       res.json({ message: "Application submitted successfully!" });
     } catch (err) { 
@@ -113,21 +118,37 @@ router.post("/apply", upload.fields([{ name: "photo" }, { name: "marksheet" }]),
 });
 
 /* =========================================
-   2. GET MATERIALS
+   2. GET MATERIALS (STRICT COURSE MATCH)
 ========================================= */
 router.get("/materials/:course/:subject", async (req, res) => {
   try {
     const rawCourse = decodeURIComponent(req.params.course).toUpperCase();
     const decodedSubject = decodeURIComponent(req.params.subject).trim();
-    let normalizedCourse = "BCA";
-    if (rawCourse.includes("BBA")) normalizedCourse = "BBA";
-    else if (rawCourse.includes("COM")) normalizedCourse = "BCOM";
+    
+    // Normalize Course
+    let normalizedCourse = "BCA"; 
+    if (rawCourse.includes("BBA") || rawCourse.includes("BUSINESS")) {
+        normalizedCourse = "BBA";
+    } 
+    else if (rawCourse.includes("BCOM") || rawCourse.includes("COMMERCE")) {
+        normalizedCourse = "BCOM";
+    } 
+    else {
+        normalizedCourse = "BCA";
+    }
 
-    const materials = await Material.find({ course: normalizedCourse, subject: decodedSubject })
-      .populate("uploadedBy", "name").sort({ uploadDate: -1 });
+    // Case Insensitive Subject Search
+    const materials = await Material.find({ 
+        course: normalizedCourse, 
+        subject: { $regex: new RegExp(`^${decodedSubject}$`, "i") } 
+    })
+    .populate("uploadedBy", "name")
+    .sort({ uploadDate: -1 });
 
     res.json(materials);
-  } catch (err) { res.status(500).json({ message: "Error fetching materials" }); }
+  } catch (err) { 
+    res.status(500).json({ message: "Error fetching materials" }); 
+  }
 });
 
 /* =========================================
@@ -254,18 +275,40 @@ router.get("/notifications/:studentId", async (req, res) => {
 });
 
 /* =========================================
-   6. FACULTY & DOUBTS
+   6. FACULTY & DOUBTS (✅ FIXED FETCH LOGIC)
 ========================================= */
 router.get("/faculty-list/:department", async (req, res) => {
   try {
-    let dept = req.params.department.trim();
-    if (dept.toUpperCase() === "ALL" || dept.toUpperCase() === "UNDEFINED") {
+    let rawDept = req.params.department.trim().toUpperCase();
+    
+    if (rawDept === "ALL" || rawDept === "UNDEFINED") {
        const allFaculty = await User.find({ role: "faculty" }).select("name _id department");
        return res.json(allFaculty);
     }
-    const faculty = await User.find({ role: "faculty", department: { $regex: new RegExp(dept, "i") } }).select("name _id department");
+
+    // ✅ SMART MATCHING: If student is "BCA", find faculty in "Computer Science"
+    let searchRegex;
+    if (rawDept.includes("BCA") || rawDept.includes("COMPUTER") || rawDept.includes("CS")) {
+        searchRegex = /BCA|COMPUTER|CS|IT/i;
+    } else if (rawDept.includes("BBA") || rawDept.includes("BUSINESS") || rawDept.includes("MANAGEMENT")) {
+        searchRegex = /BBA|BUSINESS|MANAGEMENT/i;
+    } else if (rawDept.includes("BCOM") || rawDept.includes("COMMERCE") || rawDept.includes("ACCOUNT")) {
+        searchRegex = /BCOM|COMMERCE|ACCOUNT/i;
+    } else {
+        searchRegex = new RegExp(rawDept, "i");
+    }
+
+    console.log(`🔍 Searching Faculty: ${rawDept} -> Regex: ${searchRegex}`);
+
+    const faculty = await User.find({ 
+        role: "faculty", 
+        department: { $regex: searchRegex } 
+    }).select("name _id department");
+    
     res.json(faculty);
-  } catch (err) { res.status(500).json({ message: "Error" }); }
+  } catch (err) { 
+      res.status(500).json({ message: "Error" }); 
+  }
 });
 
 router.post("/ask-doubt", upload.single("file"), async (req, res) => {
@@ -289,7 +332,7 @@ router.get("/my-doubts/:studentId", async (req, res) => {
 });
 
 /* =========================================
-   7. UTILS & TIMETABLE
+   7. UTILS, TIMETABLE & DOWNLOAD (FIXED)
 ========================================= */
 router.get("/notices", async (req, res) => {
   try {
@@ -323,36 +366,56 @@ router.post("/view-material/:materialId", async (req, res) => {
     } catch (err) { res.status(500).json({ success: false }); }
 });
   
+// ✅ FIXED: DOWNLOAD CLOUDINARY FILE
 router.get("/download/:materialId", async (req, res) => {
     try {
       const material = await Material.findById(req.params.materialId);
       if (!material) return res.status(404).json({ message: "Not found" });
-      res.download(material.filePath, material.fileName);
+      
+      if (material.filePath.startsWith("http")) {
+          return res.redirect(material.filePath);
+      } 
+      res.download(material.filePath);
     } catch (err) { res.status(500).json({ message: "Download failed" }); }
 });
 
-// GET: Fetch Today's Timetable
+// ✅ FIXED: TIMETABLE FETCHING (ALL UPCOMING)
 router.get("/timetable/:course", async (req, res) => {
   try {
-    const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
-    const endOfDay = new Date(); endOfDay.setHours(23,59,59,999);
+    const startOfDay = new Date(); 
+    startOfDay.setHours(0,0,0,0);
+    
+    // Normalize Course for Timetable
+    const rawCourse = req.params.course.toUpperCase();
+    let normalizedCourse = "BCA";
+    if (rawCourse.includes("BBA") || rawCourse.includes("BUSINESS")) normalizedCourse = "BBA";
+    else if (rawCourse.includes("BCOM") || rawCourse.includes("COMMERCE")) normalizedCourse = "BCOM";
 
-    const timetable = await Timetable.findOne({
-      department: req.params.course, 
-      date: { $gte: startOfDay, $lte: endOfDay }
-    });
+    const timetables = await Timetable.find({
+      department: normalizedCourse, 
+      date: { $gte: startOfDay }
+    }).sort({ date: 1 });
 
-    res.json(timetable ? timetable.schedule : []);
+    const allSlots = timetables.reduce((acc, curr) => {
+        const slotsWithDate = curr.schedule.map(slot => ({
+            ...slot.toObject(),
+            rawDate: curr.date 
+        }));
+        return acc.concat(slotsWithDate);
+    }, []);
+
+    res.json(allSlots);
   } catch (err) {
     res.status(500).json({ message: "Error fetching timetable" });
   }
 });
 
-// PAYMENT ROUTE
+/* =========================================
+   8. PAYMENT
+========================================= */
 router.post("/pay-fees", async (req, res) => {
     try {
       const { studentId, amount, semester } = req.body;
-      
       const student = await User.findById(studentId);
       if (!student) return res.status(404).json({ message: "Student not found" });
   
@@ -363,11 +426,8 @@ router.post("/pay-fees", async (req, res) => {
           recipients: [{ studentId: student._id }],
           createdAt: new Date()
       });
-  
       res.json({ success: true, message: "Payment Recorded Successfully!" });
-  
     } catch (err) {
-      console.error("Payment Error:", err);
       res.status(500).json({ message: "Payment Transaction Failed" });
     }
 });

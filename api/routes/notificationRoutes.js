@@ -8,14 +8,14 @@ const User = require("../models/User");
 ========================= */
 const normalizeCourse = (course = "") => {
   const upper = course.toUpperCase();
-  if (upper.includes("BCA")) return "BCA";
-  if (upper.includes("BBA")) return "BBA";
-  if (upper.includes("BCOM")) return "BCOM";
+  if (upper.includes("BCA") || upper.includes("COMPUTER")) return "BCA";
+  if (upper.includes("BBA") || upper.includes("BUSINESS")) return "BBA";
+  if (upper.includes("BCOM") || upper.includes("COMMERCE")) return "BCOM";
   return upper.trim();
 };
 
 /* =========================
-   GET ALL NOTIFICATIONS (FIXED)
+   GET ALL NOTIFICATIONS
 ========================= */
 router.get("/notifications/:studentId", async (req, res) => {
   try {
@@ -28,13 +28,13 @@ router.get("/notifications/:studentId", async (req, res) => {
 
     const normalizedCourse = normalizeCourse(student.course);
 
-    // ✅ FIX: Also fetch notifications where the student is explicitly listed in 'recipients'
-    // This ensures "Doubt Resolved" notifications appear even if the course tag is different.
+    // ✅ FIX: Added "STUDENT_ALL" to catch Admin/Global notices
     const notifications = await Notification.find({
       $or: [
-        { course: normalizedCourse },           // Class-wide notices
-        { course: "ALL" },                      // Global notices
-        { "recipients.studentId": studentId }   // Direct personal notifications (Doubts)
+        { course: normalizedCourse },           // Specific (e.g. BCA)
+        { course: "ALL" },                      // Global
+        { course: "STUDENT_ALL" },              // Admin/General Student Notices
+        { "recipients.studentId": studentId }   // Personal (Doubts)
       ]
     })
       .populate("createdBy", "name")
@@ -52,14 +52,14 @@ router.get("/notifications/:studentId", async (req, res) => {
         title: notif.title,
         message: notif.message,
         subject: notif.subject,
-        createdBy: notif.createdBy?.name || "Faculty",
+        createdBy: notif.createdBy?.name || "System",
         createdAt: notif.createdAt,
-        read: recipient ? recipient.read : false, // Defaults to false if not in list
+        read: recipient ? recipient.read : false, 
         relatedId: notif.relatedId
       };
     });
 
-    res.json(response);
+    res.json({ count: response.filter(n => !n.read).length, notifications: response });
   } catch (err) {
     console.error("❌ Error fetching notifications:", err);
     res.status(500).json({ message: "Error fetching notifications" });
@@ -67,42 +67,36 @@ router.get("/notifications/:studentId", async (req, res) => {
 });
 
 /* =========================
-   GET UNREAD COUNT (FIXED)
+   GET UNREAD COUNT
 ========================= */
 router.get("/notifications/:studentId/unread-count", async (req, res) => {
   try {
     const { studentId } = req.params;
-
     const student = await User.findById(studentId);
     if (!student) return res.json({ count: 0 });
 
     const normalizedCourse = normalizeCourse(student.course);
 
-    // ✅ FIX: Same fix here - include personal notifications
+    // ✅ FIX: Added "STUDENT_ALL" here too
     const notifications = await Notification.find({
       $or: [
         { course: normalizedCourse },
         { course: "ALL" },
+        { course: "STUDENT_ALL" },
         { "recipients.studentId": studentId }
       ]
     });
 
     let unreadCount = 0;
-
     notifications.forEach(notif => {
       const recipient = notif.recipients?.find(
         r => r.studentId.toString() === studentId
       );
-
-      // If user is not in recipient list (haven't seen it yet) OR explicitly unread
-      if (!recipient || !recipient.read) {
-        unreadCount++;
-      }
+      if (!recipient || !recipient.read) unreadCount++;
     });
 
     res.json({ count: unreadCount });
   } catch (err) {
-    console.error("❌ Error fetching unread count:", err);
     res.status(500).json({ count: 0 });
   }
 });
@@ -116,9 +110,7 @@ router.post("/notifications/:notificationId/read", async (req, res) => {
     const { studentId } = req.body;
 
     const notification = await Notification.findById(notificationId);
-    if (!notification) {
-      return res.status(404).json({ message: "Notification not found" });
-    }
+    if (!notification) return res.status(404).json({ message: "Not found" });
 
     const index = notification.recipients.findIndex(
       r => r.studentId.toString() === studentId
@@ -128,41 +120,33 @@ router.post("/notifications/:notificationId/read", async (req, res) => {
       notification.recipients[index].read = true;
       notification.recipients[index].readAt = new Date();
     } else {
-      // If student wasn't in list (e.g. global notice), add them now as read
-      notification.recipients.push({
-        studentId,
-        read: true,
-        readAt: new Date()
-      });
+      notification.recipients.push({ studentId, read: true, readAt: new Date() });
     }
 
     await notification.save();
-    res.json({ message: "Notification marked as read" });
+    res.json({ message: "Marked as read" });
   } catch (err) {
-    console.error("❌ Error marking as read:", err);
-    res.status(500).json({ message: "Failed to mark notification as read" });
+    res.status(500).json({ message: "Failed" });
   }
 });
 
 /* =========================
-   MARK ALL AS READ (FIXED)
+   MARK ALL AS READ
 ========================= */
 router.post("/notifications/read-all", async (req, res) => {
   try {
     const { studentId } = req.body;
-
     const student = await User.findById(studentId);
-    if (!student) {
-      return res.status(404).json({ message: "Student not found" });
-    }
+    if (!student) return res.status(404).json({ message: "Not found" });
 
     const normalizedCourse = normalizeCourse(student.course);
 
-    // ✅ FIX: Same fix here - include personal notifications
+    // ✅ FIX: Added "STUDENT_ALL"
     const notifications = await Notification.find({
       $or: [
         { course: normalizedCourse },
         { course: "ALL" },
+        { course: "STUDENT_ALL" },
         { "recipients.studentId": studentId }
       ]
     });
@@ -176,20 +160,14 @@ router.post("/notifications/read-all", async (req, res) => {
         notification.recipients[index].read = true;
         notification.recipients[index].readAt = new Date();
       } else {
-        notification.recipients.push({
-          studentId,
-          read: true,
-          readAt: new Date()
-        });
+        notification.recipients.push({ studentId, read: true, readAt: new Date() });
       }
-
       await notification.save();
     }
 
-    res.json({ message: "All notifications marked as read" });
+    res.json({ message: "All marked as read" });
   } catch (err) {
-    console.error("❌ Error marking all as read:", err);
-    res.status(500).json({ message: "Failed to update notifications" });
+    res.status(500).json({ message: "Failed" });
   }
 });
 

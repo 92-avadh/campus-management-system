@@ -22,6 +22,7 @@ if (!process.env.VERCEL) {
   app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 }
 
+// ✅ CORS allows mobile access
 app.use(cors({
   origin: "*", 
   methods: ["GET", "POST", "PUT", "DELETE"],
@@ -47,6 +48,7 @@ module.exports = app;
 
 if (require.main === module) {
   const PORT = process.env.PORT || 5000;
+  // ✅ 0.0.0.0 allows access from other devices on the network
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Server running on Port ${PORT}`);
   });

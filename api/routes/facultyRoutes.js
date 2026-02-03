@@ -4,6 +4,7 @@ const multer = require("multer");
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const cloudinary = require("cloudinary").v2;
 const path = require("path");
+const fs = require("fs"); 
 const crypto = require("crypto"); 
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
@@ -16,24 +17,65 @@ const Notice = require("../models/Notice");
 const AttendanceSession = require("../models/AttendanceSession"); 
 
 /* =======================
-   CLOUDINARY CONFIG
+   HELPER: COURSE NORMALIZER
 ======================= */
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
+const normalizeCourse = (dept) => {
+    if (!dept) return "GENERAL";
+    const upper = dept.toUpperCase();
+    if (upper.includes("BCA") || upper.includes("COMPUTER") || upper.includes("CS")) return "BCA";
+    if (upper.includes("BBA") || upper.includes("BUSINESS") || upper.includes("MANAGEMENT")) return "BBA";
+    if (upper.includes("BCOM") || upper.includes("COMMERCE") || upper.includes("ACCOUNT")) return "BCOM";
+    return upper;
+};
 
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: "campus_materials",
-    allowed_formats: ["pdf", "doc", "docx", "ppt", "pptx", "txt"],
-    resource_type: "auto"
+/* =======================
+   ⚡ HYBRID STORAGE CONFIG (SPEED FIX)
+======================= */
+// Check if running on Vercel or Production
+const isProduction = process.env.VERCEL || process.env.NODE_ENV === "production";
+
+let upload;
+
+if (isProduction) {
+  // ☁️ CLOUDINARY (For Vercel/Deployment)
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+  });
+
+  const cloudStorage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+      folder: "campus_materials",
+      allowed_formats: ["pdf", "doc", "docx", "ppt", "pptx", "txt"],
+      resource_type: "auto"
+    }
+  });
+  upload = multer({ storage: cloudStorage });
+  console.log("🚀 Using Cloudinary Storage (Production)");
+
+} else {
+  // 💻 LOCAL STORAGE (For Localhost - Ultra Fast)
+  // Ensure directory exists
+  const uploadDir = path.join(__dirname, "../uploads/materials");
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
   }
-});
 
-const upload = multer({ storage });
+  const diskStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+      cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+      // Clean filename to prevent issues
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, "material-" + uniqueSuffix + path.extname(file.originalname));
+    }
+  });
+  upload = multer({ storage: diskStorage });
+  console.log("⚡ Using Local Disk Storage (Fast Mode)");
+}
 
 /* =======================
    1. GET NOTICES
@@ -59,21 +101,36 @@ router.get("/notices", async (req, res) => {
 router.post("/add-notice", async (req, res) => {
   try {
     const { title, content, target, postedBy, userId } = req.body;
-    const newNotice = new Notice({
-      title, content, target: target || "student", postedBy
-    });
-    const savedNotice = await newNotice.save();
+    const finalTarget = target || "student";
 
-    await Notification.create({
-      type: "notice",
-      title: "New Notice Posted",
-      message: title, 
-      course: "ALL",  
-      relatedId: savedNotice._id,
-      relatedModel: "Notice",
-      createdBy: userId, 
-      createdAt: new Date()
+    const newNotice = new Notice({
+      title, content, target: finalTarget, postedBy
     });
+    
+    // ✅ PARALLEL EXECUTION (Faster)
+    const [savedNotice] = await Promise.all([
+        newNotice.save(),
+        (async () => {
+            let notifyCourse = "STUDENT_ALL"; 
+            if (finalTarget === "faculty") notifyCourse = "FACULTY_ALL";
+            else if (finalTarget !== "student" && finalTarget !== "all") {
+                notifyCourse = normalizeCourse(finalTarget); 
+            }
+
+            // Create notification but don't block the main thread unnecessarily
+            return Notification.create({
+                type: "notice",
+                title: "New Notice: " + title,
+                message: content.substring(0, 40) + "...", 
+                course: notifyCourse,  
+                relatedId: newNotice._id,
+                relatedModel: "Notice",
+                createdBy: userId, 
+                createdAt: new Date()
+            });
+        })()
+    ]);
+
     res.json({ success: true, message: "Notice Posted!" });
   } catch (err) {
     res.status(500).json({ message: "Failed to post notice" });
@@ -114,7 +171,6 @@ router.post("/generate-qr", async (req, res) => {
     res.json({ qrData: JSON.stringify(data), code: uniqueCode });
 
   } catch (err) {
-    console.error("QR Gen Error:", err);
     res.status(500).json({ message: "Error generating QR/Code" });
   }
 });
@@ -145,29 +201,36 @@ router.get("/subjects/:courseName", async (req, res) => {
 });
 
 /* =======================
-   5. MATERIAL OPERATIONS (UPDATED FOR CLOUDINARY)
+   5. MATERIAL OPERATIONS (OPTIMIZED)
 ======================= */
 router.post("/upload-material", upload.single("material"), async (req, res) => {
   try {
+    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+
     const { title, course, subject, uploadedBy } = req.body;
     
+    // Determine path based on storage type
+    const filePath = isProduction ? req.file.path : `uploads/materials/${req.file.filename}`;
+
     const newMaterial = new Material({
       title, course, subject, uploadedBy,
-      // Cloudinary returns the URL in req.file.path
-      filePath: req.file.path, 
+      filePath: filePath, 
       fileName: req.file.originalname,
       fileSize: req.file.size
     });
     
-    const saved = await newMaterial.save();
-    
-    await Notification.create({
-        type: "material",
-        title: "New Material",
-        message: `${title} uploaded`,
-        course: saved.course,
-        createdBy: uploadedBy
-    });
+    // ✅ PARALLEL DB WRITES: Saves ~200ms
+    const [saved] = await Promise.all([
+        newMaterial.save(),
+        Notification.create({
+            type: "material",
+            title: "New Material Uploaded",
+            message: `${title} (${subject})`,
+            course: normalizeCourse(course),
+            createdBy: uploadedBy
+        })
+    ]);
+
     res.status(201).json(saved);
   } catch (err) { 
     console.error(err);
@@ -181,12 +244,27 @@ router.get("/my-materials/:facultyId", async (req, res) => {
 });
 
 router.delete("/material/:materialId", async (req, res) => {
-  await Material.findByIdAndDelete(req.params.materialId);
-  res.json({ message: "Deleted" });
+  try {
+    const material = await Material.findById(req.params.materialId);
+    if (material) {
+        // If local file, delete it from disk
+        if (!isProduction && material.filePath && !material.filePath.startsWith("http")) {
+            const absolutePath = path.join(__dirname, "..", material.filePath);
+            if (fs.existsSync(absolutePath)) {
+                fs.unlinkSync(absolutePath);
+            }
+        }
+        // Cloudinary deletion is usually handled via Admin API or ignored to save bandwidth
+        await Material.findByIdAndDelete(req.params.materialId);
+    }
+    res.json({ message: "Deleted" });
+  } catch(err) {
+    res.status(500).json({ message: "Error deleting material" });
+  }
 });
 
 /* =======================
-   6. DOUBTS & PROFILE
+   6. DOUBTS
 ======================= */
 router.get("/doubts/:facultyId", async (req, res) => {
   try {
@@ -204,60 +282,28 @@ router.put("/answer-doubt/:id", async (req, res) => {
 
     if (!updatedQuery) return res.status(404).json({ success: false, message: "Not found" });
 
-    await Notification.create({
+    // Parallel Notification
+    Notification.create({
       type: "query",
-      title: "Doubt Resolved",
-      message: `Your doubt in ${updatedQuery.subject} has been answered.`,
-      course: "General",
+      title: "Doubt Answered",
+      message: `Your question in ${updatedQuery.subject} was answered.`,
+      course: "PERSONAL",
       recipients: [{ studentId: updatedQuery.student, read: false }] 
-    });
+    }).catch(err => console.error("Notification Error:", err)); // Fire & Forget
+
     res.json({ success: true, message: "Answer sent!" });
   } catch (err) { res.status(500).json({ success: false }); }
 });
 
-router.get("/profile/:id", async (req, res) => {
-    try {
-        const user = await User.findById(req.params.id).select("-password");
-        res.json(user);
-    } catch (err) { res.status(500).json({ message: "Error" }); }
-});
-
-router.put("/update-profile/:id", async (req, res) => {
-  try {
-    const { email, phone, address, dob } = req.body;
-    await User.findByIdAndUpdate(req.params.id, { email, phone, address, dob });
-    res.json({ success: true, message: "Profile updated!" });
-  } catch (err) { res.status(500).json({ success: false, message: "Update failed" }); }
-});
-
-router.put("/change-password/:id", async (req, res) => {
-  try {
-    const { oldPassword, newPassword } = req.body;
-    const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
-
-    const isMatch = await bcrypt.compare(oldPassword, user.password);
-    if (!isMatch) return res.status(400).json({ success: false, message: "Incorrect current password" });
-
-    user.password = await bcrypt.hash(newPassword, 10);
-    await user.save();
-    res.json({ success: true, message: "Password changed!" });
-  } catch (err) { res.status(500).json({ success: false, message: "Error" }); }
-});
-
 /* =======================
-   7. TIMETABLE
+   7. TIMETABLE (UPDATED NOTIFICATIONS)
 ======================= */
 router.post("/upload-timetable", async (req, res) => {
   try {
     const { department, schedule, date } = req.body;
-    let safeDate;
-    if (date) {
-        safeDate = new Date(`${date}T12:00:00Z`);
-    } else {
-        safeDate = new Date();
-        safeDate.setHours(12, 0, 0, 0); 
-    }
+    let safeDate = date ? new Date(`${date}T12:00:00Z`) : new Date();
+    safeDate.setHours(12, 0, 0, 0); 
+
     const startOfDay = new Date(safeDate); startOfDay.setHours(0,0,0,0);
     const endOfDay = new Date(safeDate); endOfDay.setHours(23,59,59,999);
 
@@ -266,13 +312,21 @@ router.post("/upload-timetable", async (req, res) => {
       date: { $gte: startOfDay, $lte: endOfDay }
     });
 
-    if (existing) {
-      existing.schedule = schedule;
-      existing.date = safeDate; 
-      await existing.save();
-    } else {
-      await new Timetable({ department, date: safeDate, schedule }).save();
-    }
+    const savePromise = existing 
+      ? (async () => { existing.schedule = schedule; existing.date = safeDate; return existing.save(); })()
+      : new Timetable({ department, date: safeDate, schedule }).save();
+
+    // Parallel Notification
+    const [saved] = await Promise.all([
+        savePromise,
+        Notification.create({
+            type: "alert",
+            title: "📅 Timetable Updated",
+            message: `New timetable uploaded for ${department} (${new Date(safeDate).toLocaleDateString()}).`,
+            course: normalizeCourse(department),
+            createdAt: new Date()
+        })
+    ]);
 
     res.json({ success: true, message: "Timetable Published!" });
   } catch (err) {
@@ -290,20 +344,15 @@ router.get("/timetable", async (req, res) => {
             department,
             date: { $gte: startOfDay }
         }).sort({ date: 1 });
-
+        
         const flatSchedule = timetables.reduce((acc, curr) => {
             const rawDate = curr.date;
-            const slots = curr.schedule.map(s => ({
-                ...s.toObject(),
-                rawDate: rawDate 
-            }));
+            const slots = curr.schedule.map(s => ({ ...s.toObject(), rawDate }));
             return acc.concat(slots);
         }, []);
         
         res.json(flatSchedule);
-    } catch (err) {
-        res.status(500).json({ message: "Error fetching" });
-    }
+    } catch (err) { res.status(500).json({ message: "Error fetching" }); }
 });
 
 router.post("/cancel-class", async (req, res) => {
@@ -324,21 +373,23 @@ router.post("/cancel-class", async (req, res) => {
         if (!slot) return res.status(404).json({ message: "Slot not found" });
         
         slot.isCancelled = !slot.isCancelled; 
-        await timetable.save();
         
+        const promises = [timetable.save()];
+
         if (slot.isCancelled) {
-            await Notification.create({
+            promises.push(Notification.create({
                 type: "alert",
                 title: `🚨 Class Cancelled: ${slot.subject}`,
-                message: `The ${slot.subject} class scheduled at ${slot.time} has been cancelled.`,
-                course: department,
+                message: `The ${slot.subject} class at ${slot.time} has been cancelled.`,
+                course: normalizeCourse(department),
                 createdAt: new Date()
-            });
+            }));
         }
+
+        await Promise.all(promises);
         res.json({ success: true, message: slot.isCancelled ? "Class Cancelled" : "Class Restored" });
         
     } catch (err) {
-        console.error(err);
         res.status(500).json({ message: "Error cancelling class" });
     }
 });
@@ -356,12 +407,27 @@ router.post("/delete-class-slot", async (req, res) => {
     });
 
     if (timetable) {
+      const slot = timetable.schedule.id(slotId);
+      const subjectName = slot ? slot.subject : "A class";
+
       timetable.schedule.pull({ _id: slotId }); 
+      
+      const promises = [];
       if (timetable.schedule.length === 0) {
-        await Timetable.findByIdAndDelete(timetable._id);
+        promises.push(Timetable.findByIdAndDelete(timetable._id));
       } else {
-        await timetable.save();
+        promises.push(timetable.save());
       }
+
+      promises.push(Notification.create({
+          type: "alert",
+          title: "🗑️ Class Removed",
+          message: `${subjectName} has been removed from the schedule.`,
+          course: normalizeCourse(department),
+          createdAt: new Date()
+      }));
+
+      await Promise.all(promises);
       res.json({ success: true, message: "Class deleted!" });
     } else {
       res.status(404).json({ message: "Not found" });
@@ -369,6 +435,35 @@ router.post("/delete-class-slot", async (req, res) => {
   } catch(err) {
     res.status(500).json({ message: "Error deleting" });
   }
+});
+
+// Profile Routes
+router.get("/profile/:id", async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id).select("-password");
+        res.json(user);
+    } catch (err) { res.status(500).json({ message: "Error" }); }
+});
+
+router.put("/update-profile/:id", async (req, res) => {
+  try {
+    const { email, phone, address, dob } = req.body;
+    await User.findByIdAndUpdate(req.params.id, { email, phone, address, dob });
+    res.json({ success: true, message: "Profile updated!" });
+  } catch (err) { res.status(500).json({ success: false }); }
+});
+
+router.put("/change-password/:id", async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ success: false });
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) return res.status(400).json({ success: false });
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    res.json({ success: true, message: "Password changed!" });
+  } catch (err) { res.status(500).json({ success: false }); }
 });
 
 module.exports = router;

@@ -6,7 +6,7 @@ const fs = require("fs");
 const path = require("path");
 const User = require("../models/User");
 const Notice = require("../models/Notice");
-const Notification = require("../models/Notification");
+const Notification = require("../models/Notification"); //
 const Application = require("../models/Application");
 const Course = require("../models/Course");
 
@@ -88,7 +88,7 @@ router.post("/login", async (req, res) => {
 });
 
 /* =========================================
-   2. NOTICE MANAGEMENT
+   2. NOTICE MANAGEMENT (FIXED NOTIFICATIONS)
 ========================================= */
 
 router.post("/add-notice", async (req, res) => {
@@ -104,7 +104,18 @@ router.post("/add-notice", async (req, res) => {
         });
         
         const savedNotice = await newNotice.save();
-        const notificationCourse = finalTarget === "faculty" ? "FACULTY_ALL" : "STUDENT_ALL";
+
+        // ✅ FIX: Dynamic Notification Targeting
+        let notificationCourse = "STUDENT_ALL"; // Default to all students
+
+        if (finalTarget === "faculty") {
+            notificationCourse = "FACULTY_ALL";
+        } else if (finalTarget === "student" || finalTarget === "all") {
+            notificationCourse = "STUDENT_ALL";
+        } else {
+            // Assume specific course (BCA, BBA, BCOM)
+            notificationCourse = finalTarget.toUpperCase(); 
+        }
 
         await Notification.create({
             type: "notice",
@@ -292,7 +303,6 @@ router.get("/users", async (req, res) => {
     } catch (err) { res.status(500).json({ message: "Error" }); }
 });
 
-// ✅ FIXED: Add User Now Sends Email
 router.post("/add-user", async (req, res) => {
     try {
         const { name, email, phone, role, department } = req.body;

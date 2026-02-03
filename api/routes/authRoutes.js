@@ -5,8 +5,12 @@ const nodemailer = require("nodemailer");
 const jwt = require("jsonwebtoken"); 
 const User = require("../models/User");
 
-// EMAIL CONFIG (Correct for Vercel)
+// ==============================
+//   EMAIL CONFIG (OPTIMIZED)
+// ==============================
 const transporter = nodemailer.createTransport({
+  pool: true,            
+  maxConnections: 5,     
   host: "smtp.gmail.com",
   port: 587,              
   secure: false,          
@@ -81,12 +85,15 @@ router.post("/login-step1", async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpires = Date.now() + 5 * 60 * 1000; 
 
+    // ✅ DB Update first (Blocking but fast)
     await User.updateOne({ _id: user._id }, { $set: { otp, otpExpires } });
 
-    console.log(`📧 Preparing to send OTP to: ${user.email}`);
+    // ✅ Response sent IMMEDIATELY
+    res.json({ message: "OTP Sent", email: user.email });
 
+    // ✅ Email sending happens in BACKGROUND (Logs removed)
     const mailOptions = {
-      from: `Campus Admin <${process.env.EMAIL_USER}>`, // ✅ Uses your real Gmail
+      from: `Campus Admin <${process.env.EMAIL_USER}>`, 
       to: user.email,
       subject: "🔐 Login Verification",
       html: getHtmlTemplate("Login OTP", `
@@ -96,15 +103,10 @@ router.post("/login-step1", async (req, res) => {
         <p style="font-size:12px; color:gray;">Sent via: ${process.env.EMAIL_USER}</p>
       `)
     };
-    
-    res.json({ message: "OTP Sent", email: user.email });
 
-    transporter.sendMail(mailOptions)
-      .then(info => console.log("✅ Email sent successfully:", info.messageId))
-      .catch(err => console.error("❌ Email FAILED:", err));
+    transporter.sendMail(mailOptions).catch(() => {}); // Silent catch
 
   } catch (error) {
-    console.error("Login Error:", error);
     if (!res.headersSent) res.status(500).json({ message: "Server Error" });
   }
 });
@@ -151,10 +153,10 @@ router.post("/forgot-password-step1", async (req, res) => {
 
     await User.updateOne({ _id: user._id }, { $set: { otp, otpExpires } });
 
-    console.log(`📧 Sending Reset OTP to: ${user.email}`);
+    res.json({ success: true, message: "OTP sent to your email" });
 
     const mailOptions = {
-      from: `Campus Support <${process.env.EMAIL_USER}>`, // ✅ FIXED: Uses real Gmail
+      from: `Campus Support <${process.env.EMAIL_USER}>`,
       to: email,
       subject: "🔑 Password Reset Request",
       html: getHtmlTemplate("Reset Your Password", `
@@ -164,15 +166,10 @@ router.post("/forgot-password-step1", async (req, res) => {
         <p>⚠️ This code expires in 10 minutes.</p>
       `)
     };
-    
-    res.json({ success: true, message: "OTP sent to your email" });
 
-    transporter.sendMail(mailOptions)
-      .then(info => console.log("✅ Reset Email sent:", info.messageId))
-      .catch(err => console.error("❌ Reset Email FAILED:", err));
+    transporter.sendMail(mailOptions).catch(() => {});
 
   } catch (err) {
-    console.error("Forgot Pass Error:", err);
     if (!res.headersSent) res.status(500).json({ message: "Server Error" });
   }
 });
