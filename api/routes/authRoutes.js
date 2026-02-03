@@ -6,11 +6,19 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
 // EMAIL CONFIG
+// ✅ UPDATED TRANSPORTER FOR VERCEL
 const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+  host: "smtp.gmail.com",
+  port: 587,              // MUST use 587 for Vercel
+  secure: false,          // MUST be false for port 587
+  auth: { 
+    user: process.env.EMAIL_USER, 
+    pass: process.env.EMAIL_PASS 
+  },
+  tls: {
+    rejectUnauthorized: false // Fixes SSL errors
+  }
 });
-
 // ✅ UNIFIED EMAIL TEMPLATE BUILDER
 const getHtmlTemplate = (title, bodyContent) => `
 <!DOCTYPE html>
@@ -232,5 +240,37 @@ router.post("/reset-password", async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 });
+// --- DEBUGGING ROUTE (Add this to test email) ---
+router.get("/test-email", async (req, res) => {
+  try {
+    // 1. Check if Variables exist
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      return res.status(500).json({ 
+        message: "❌ Env Variables Missing", 
+        user: process.env.EMAIL_USER ? "Set" : "Missing",
+        pass: process.env.EMAIL_PASS ? "Set" : "Missing"
+      });
+    }
 
+    // 2. Verify Connection
+    await transporter.verify();
+
+    // 3. Send Test Email
+    const info = await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: process.env.EMAIL_USER, // Sends to yourself
+      subject: "✅ Test Email from Vercel",
+      text: "If you are reading this, your email configuration is PERFECT!"
+    });
+
+    res.json({ success: true, message: "Email Sent!", info });
+
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: "❌ Email Failed", 
+      error: error.message 
+    });
+  }
+});
 module.exports = router;
