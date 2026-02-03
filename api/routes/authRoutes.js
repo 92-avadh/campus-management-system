@@ -78,43 +78,36 @@ router.post("/login-step1", async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid Password" });
 
-    // Generate Login OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpires = Date.now() + 5 * 60 * 1000; 
 
-    // Save to DB
     await User.updateOne({ _id: user._id }, { $set: { otp, otpExpires } });
 
-    // Prepare Email Content
-    const mailContent = `
-      <p>Hello <strong>${user.name}</strong>, 👋</p>
-      <p>We received a login request for your account. Please use the One-Time Password (OTP) below to complete your login:</p>
-      <div class="otp-box">${otp}</div>
-      <p>⏳ This OTP is valid for <strong>5 minutes</strong>.</p>
-      <p style="color: #64748b; font-size: 13px;">If you did not request this login, please contact admin immediately.</p>
-    `;
+    // ✅ DEBUG LOG: See exactly where the email is going in Vercel Logs
+    console.log(`📧 Preparing to send OTP to: ${user.email}`);
 
     const mailOptions = {
-      from: '"Campus Security" <no-reply@campus.edu>',
+      from: `Campus Admin <${process.env.EMAIL_USER}>`, // ✅ CHANGED: Uses your real Gmail to prevent blocking
       to: user.email,
-      subject: "🔐 Login Verification - Campus System",
-      html: getHtmlTemplate("🔒 Secure Login OTP", mailContent)
+      subject: "🔐 Login Verification",
+      html: getHtmlTemplate("Login OTP", `
+        <p>Hello ${user.name},</p>
+        <p>Your OTP is:</p>
+        <div class="otp-box">${otp}</div>
+      `)
     };
     
-    // 🚀 FIRE AND FORGET: Send Response FIRST
+    // 1. Send Response to User
     res.json({ message: "OTP Sent", email: user.email });
 
-    // Send Email in Background (User doesn't wait for this)
-    transporter.sendMail(mailOptions).catch(err => {
-        console.error("❌ Background Email Failed:", err);
-    });
+    // 2. Send Email & Log Result
+    transporter.sendMail(mailOptions)
+      .then(info => console.log("✅ Email sent successfully:", info.messageId))
+      .catch(err => console.error("❌ Email FAILED:", err));
 
   } catch (error) {
-    console.error("Login OTP Error:", error);
-    // Only send error if we haven't replied yet
-    if (!res.headersSent) {
-        res.status(500).json({ message: "Server Error" });
-    }
+    console.error("Login Error:", error);
+    if (!res.headersSent) res.status(500).json({ message: "Server Error" });
   }
 });
 
