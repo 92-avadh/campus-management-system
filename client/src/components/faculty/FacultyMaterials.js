@@ -3,6 +3,7 @@ import { FaUpload, FaFileAlt, FaTrash } from "react-icons/fa";
 import { API_BASE_URL } from "../../apiConfig";
 
 const FacultyMaterials = ({ user, subjects, myMaterials, fetchMyMaterials }) => {
+  // ✅ Default to "BCA", but allow changing it
   const [formData, setFormData] = useState({ title: "", course: "BCA", subject: "" });
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -14,14 +15,12 @@ const FacultyMaterials = ({ user, subjects, myMaterials, fetchMyMaterials }) => 
     setLoading(true);
     const data = new FormData();
     data.append("title", formData.title);
-    data.append("course", formData.course);
+    data.append("course", formData.course); // ✅ Sends selected course
     data.append("subject", formData.subject);
     data.append("uploadedBy", user._id || user.id);
     data.append("material", file);
 
     try {
-      // ✅ FIX: Removed manual 'Content-Type' header. 
-      // Fetch + FormData automatically handles the boundary.
       const res = await fetch(`${API_BASE_URL}/faculty/upload-material`, {
         method: "POST",
         body: data, 
@@ -30,7 +29,7 @@ const FacultyMaterials = ({ user, subjects, myMaterials, fetchMyMaterials }) => 
       const result = await res.json();
       if (res.ok) {
         alert("✅ Material Uploaded!");
-        setFormData({ ...formData, title: "" });
+        setFormData({ ...formData, title: "" }); // Keep course/subject selected for faster uploads
         setFile(null);
         fetchMyMaterials();
       } else {
@@ -53,13 +52,15 @@ const FacultyMaterials = ({ user, subjects, myMaterials, fetchMyMaterials }) => 
 
   return (
     <div className="grid grid-cols-1 gap-8">
-      {/* Upload Form - Now Full Width */}
+      {/* Upload Form */}
       <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border dark:border-gray-700 h-fit">
         <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-2">
           <FaUpload className="text-blue-600" /> Upload Material
         </h3>
         
         <form onSubmit={handleUpload} className="space-y-4">
+          
+          {/* 1. TITLE */}
           <div>
             <label className="text-xs font-bold text-gray-400 uppercase ml-1">Title</label>
             <input 
@@ -71,6 +72,22 @@ const FacultyMaterials = ({ user, subjects, myMaterials, fetchMyMaterials }) => 
             />
           </div>
 
+          {/* 2. COURSE SELECTOR (NEW) */}
+          <div>
+             <label className="text-xs font-bold text-gray-400 uppercase ml-1">Course</label>
+             <select 
+               required
+               value={formData.course}
+               onChange={(e) => setFormData({...formData, course: e.target.value})}
+               className="w-full p-3 bg-gray-50 dark:bg-gray-700 rounded-xl border-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+             >
+               <option value="BCA">BCA</option>
+               <option value="BBA">BBA</option>
+               <option value="BCOM">BCOM</option>
+             </select>
+          </div>
+
+          {/* 3. SUBJECT SELECTOR */}
           <div>
              <label className="text-xs font-bold text-gray-400 uppercase ml-1">Subject</label>
              <select 
@@ -84,6 +101,7 @@ const FacultyMaterials = ({ user, subjects, myMaterials, fetchMyMaterials }) => 
              </select>
           </div>
 
+          {/* 4. FILE INPUT */}
           <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6 text-center hover:bg-gray-50 dark:hover:bg-gray-700/50 transition cursor-pointer relative">
             <input 
               type="file" 
@@ -112,7 +130,7 @@ const FacultyMaterials = ({ user, subjects, myMaterials, fetchMyMaterials }) => 
         </form>
       </div>
 
-      {/* Materials List - Now Underneath */}
+      {/* Materials List */}
       <div className="space-y-4">
         <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">My Uploads</h3>
         {myMaterials.length === 0 ? (
@@ -127,7 +145,7 @@ const FacultyMaterials = ({ user, subjects, myMaterials, fetchMyMaterials }) => 
                         <div>
                             <h4 className="font-bold text-gray-800 dark:text-white">{m.title}</h4>
                             <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                                {m.subject} • {new Date(m.uploadDate).toLocaleDateString()}
+                                {m.course} • {m.subject} • {new Date(m.uploadDate).toLocaleDateString()}
                             </p>
                         </div>
                     </div>
