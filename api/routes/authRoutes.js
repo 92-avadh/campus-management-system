@@ -5,7 +5,7 @@ const nodemailer = require("nodemailer");
 const jwt = require("jsonwebtoken"); 
 const User = require("../models/User");
 
-// EMAIL CONFIG (Correct for Vercel)
+// ✅ CORRECT EMAIL CONFIG FOR VERCEL (Port 587)
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 587,              
@@ -19,7 +19,7 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// ✅ UNIFIED EMAIL TEMPLATE BUILDER
+// HTML TEMPLATE
 const getHtmlTemplate = (title, bodyContent) => `
 <!DOCTYPE html>
 <html>
@@ -57,7 +57,7 @@ const getHtmlTemplate = (title, bodyContent) => `
 //      EXISTING LOGIN ROUTES
 // ==============================
 
-// LOGIN STEP 1: Validate ID & Password -> Send OTP
+// LOGIN STEP 1
 router.post("/login-step1", async (req, res) => {
   try {
     let { userId, password, role } = req.body;
@@ -83,25 +83,24 @@ router.post("/login-step1", async (req, res) => {
 
     await User.updateOne({ _id: user._id }, { $set: { otp, otpExpires } });
 
-    console.log(`📧 Preparing to send OTP to: ${user.email}`);
+    console.log(`📧 Sending Login OTP to: ${user.email}`);
 
     const mailOptions = {
-      from: `Campus Admin <${process.env.EMAIL_USER}>`, // ✅ Uses your real Gmail
+      from: `Campus Admin <${process.env.EMAIL_USER}>`, // ✅ Uses real Gmail
       to: user.email,
       subject: "🔐 Login Verification",
       html: getHtmlTemplate("Login OTP", `
         <p>Hello ${user.name},</p>
         <p>Your OTP is:</p>
         <div class="otp-box">${otp}</div>
-        <p style="font-size:12px; color:gray;">Sent via: ${process.env.EMAIL_USER}</p>
       `)
     };
     
     res.json({ message: "OTP Sent", email: user.email });
 
     transporter.sendMail(mailOptions)
-      .then(info => console.log("✅ Email sent successfully:", info.messageId))
-      .catch(err => console.error("❌ Email FAILED:", err));
+      .then(info => console.log("✅ Login Email sent:", info.messageId))
+      .catch(err => console.error("❌ Login Email FAILED:", err));
 
   } catch (error) {
     console.error("Login Error:", error);
@@ -109,7 +108,7 @@ router.post("/login-step1", async (req, res) => {
   }
 });
 
-// LOGIN STEP 2: Verify OTP
+// LOGIN STEP 2
 router.post("/login-step2", async (req, res) => {
   try {
     let { userId, otp } = req.body;
