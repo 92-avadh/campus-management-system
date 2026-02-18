@@ -4,49 +4,31 @@ const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 const fs = require("fs");
 const path = require("path");
+
+// Models
 const User = require("../models/User");
 const Notice = require("../models/Notice");
-const Notification = require("../models/Notification"); //
+const Notification = require("../models/Notification"); 
 const Application = require("../models/Application");
 const Course = require("../models/Course");
 
 /* =========================================
-   0. EMAIL CONFIGURATION & TEMPLATES
+   0. EMAIL CONFIGURATION & TEMPLATE
 ========================================= */
 const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
 });
 
-// ✅ UNIFIED PRO TEMPLATE
 const getEmailTemplate = (title, content) => `
 <!DOCTYPE html>
 <html>
-<head>
-  <style>
-    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f3f4f6; margin: 0; padding: 0; }
-    .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    .header { background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%); padding: 30px; text-align: center; color: white; }
-    .header h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: 0.5px; }
-    .content { padding: 40px 30px; color: #374151; line-height: 1.6; font-size: 16px; }
-    .cred-box { background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 20px; margin: 25px 0; }
-    .cred-row { margin: 10px 0; font-family: monospace; font-size: 16px; color: #1e40af; }
-    .footer { background-color: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb; }
-    .btn { display: inline-block; background-color: #4f46e5; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-top: 20px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <div style="font-size: 40px; margin-bottom: 5px;">🏛️</div>
-      <h1>Campus Management</h1>
-    </div>
-    <div class="content">
-      <h2 style="color: #111827; margin-top: 0;">${title}</h2>
-      ${content}
-    </div>
-    <div class="footer">
-      <p>© ${new Date().getFullYear()} Campus Management System. All rights reserved.</p>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f4; padding: 20px;">
+  <div style="max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+    <h2 style="color: #1e293b; margin-top: 0; text-align: center;">${title}</h2>
+    <div style="color: #475569; line-height: 1.6; margin: 20px 0;">${content}</div>
+    <div style="font-size: 12px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 10px;">
+      © ${new Date().getFullYear()} Campus Management System
     </div>
   </div>
 </body>
@@ -54,9 +36,8 @@ const getEmailTemplate = (title, content) => `
 `;
 
 /* =========================================
-   1. ADMIN AUTHENTICATION
+   1. ADMIN AUTH
 ========================================= */
-
 router.post("/login", async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -66,6 +47,7 @@ router.post("/login", async (req, res) => {
         });
 
         if (!admin) {
+            // Default Fallback Admin
             if (username === "admin" && password === "admin123") {
                 return res.json({ 
                     success: true, 
@@ -88,34 +70,156 @@ router.post("/login", async (req, res) => {
 });
 
 /* =========================================
-   2. NOTICE MANAGEMENT (FIXED NOTIFICATIONS)
+   2. APPROVE APPLICATION (✅ RENAME & MOVE FILES)
 ========================================= */
+router.post("/approve-application/:id", async (req, res) => {
+    try {
+        const app = await Application.findById(req.params.id);
+        if (!app) return res.status(404).json({ message: "Application not found" });
 
+        // Generate Credentials
+        const password = Math.random().toString(36).slice(-8); 
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const userId = `ST${new Date().getFullYear()}${Math.floor(1000 + Math.random() * 9000)}`;
+
+        let finalPhotoPath = app.photo || "";
+        let finalMarksheetPath = app.marksheet || "";
+
+        // ✅ FUNCTION: Rename Temp File -> Permanent File & Move to Main Uploads
+        const processFile = (tempRelativePath, typePrefix) => {
+            if (!tempRelativePath || tempRelativePath.startsWith("http")) return tempRelativePath;
+
+            // 1. Resolve full path of the current TEMP file
+            // Note: tempRelativePath comes from DB, e.g., "uploads/applications/TEMP_PHOTO_..."
+            const oldAbsolutePath = path.join(__dirname, "../", tempRelativePath);
+
+            if (fs.existsSync(oldAbsolutePath)) {
+                const ext = path.extname(tempRelativePath);
+                // 2. Define New Name: PHOTO_ST20261234.jpg
+                const newFilename = `${typePrefix}_${userId}${ext}`;
+                
+                // 3. Define New Location: "uploads/PHOTO_ST....jpg" (Moving out of 'applications' subfolder)
+                const newRelativePath = `uploads/${newFilename}`;
+                const newAbsolutePath = path.join(__dirname, "../", newRelativePath);
+                
+                try {
+                    // Rename and Move
+                    fs.renameSync(oldAbsolutePath, newAbsolutePath);
+                    // Return the new relative path for the DB
+                    return newRelativePath.replace(/\\/g, "/"); 
+                } catch (e) { 
+                    console.error(`Error processing ${typePrefix}:`, e);
+                    return tempRelativePath; // Fallback to old path if move fails
+                }
+            }
+            return tempRelativePath;
+        };
+
+        // Process Files
+        if (app.photo) finalPhotoPath = processFile(app.photo, "PHOTO");
+        if (app.marksheet) finalMarksheetPath = processFile(app.marksheet, "MARKSHEET");
+
+        // Create Student User
+        const newUser = new User({
+            name: app.name, email: app.email, phone: app.phone, role: "student",
+            userId, password: hashedPassword, course: app.course,
+            photo: finalPhotoPath, marksheet: finalMarksheetPath,
+            dob: app.dob, address: app.address
+        });
+
+        await newUser.save();
+        
+        // Mark Application as Approved
+        app.status = "Approved";
+        await app.save();
+
+        // Send Email
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: app.email,
+            subject: "🎉 Admission Approved",
+            html: getEmailTemplate("Welcome to Campus!", `
+              <p>Congratulations <strong>${app.name}</strong>!</p>
+              <p>Your admission has been approved. Please use the credentials below to log in:</p>
+              <div style="background: #e2e8f0; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                <p><strong>User ID:</strong> ${userId}</p>
+                <p><strong>Password:</strong> ${password}</p>
+              </div>
+              <p>Please change your password after logging in.</p>
+            `)
+        };
+        transporter.sendMail(mailOptions).catch(e => console.log("Email error:", e));
+
+        res.json({ success: true, message: "Student Approved!", userId, password });
+    } catch (err) {
+        console.error("Approval Error:", err);
+        res.status(500).json({ message: "Approval failed" });
+    }
+});
+
+/* =========================================
+   3. REJECT APPLICATION (✅ DELETE TEMP FILES)
+========================================= */
+router.post("/reject-application/:id", async (req, res) => {
+    try {
+        const { reason } = req.body;
+        const app = await Application.findById(req.params.id);
+        if (!app) return res.status(404).json({ message: "Application not found" });
+
+        // Send Rejection Email
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: app.email,
+            subject: "Application Status Update",
+            html: getEmailTemplate("Application Update", `
+              <p>Dear <strong>${app.name}</strong>,</p>
+              <p>We regret to inform you that your application has been rejected.</p>
+              <p><strong>Reason:</strong> ${reason}</p>
+            `)
+        };
+        transporter.sendMail(mailOptions).catch(e => console.log(e));
+
+        // ✅ FUNCTION: Delete Local File
+        const deleteFile = (relativePath) => {
+            if (relativePath && !relativePath.startsWith("http")) {
+                const absolutePath = path.join(__dirname, "../", relativePath);
+                if (fs.existsSync(absolutePath)) {
+                    try {
+                        fs.unlinkSync(absolutePath); // 🗑️ DELETE FILE
+                        console.log(`Deleted rejected file: ${absolutePath}`);
+                    } catch (e) { console.error("Delete Error:", e); }
+                }
+            }
+        };
+
+        // Delete associated files
+        deleteFile(app.photo);
+        deleteFile(app.marksheet);
+
+        // Delete Application Record
+        await Application.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: "Application Rejected & Files Deleted" });
+    } catch (err) { res.status(500).json({ message: "Rejection failed" }); }
+});
+
+/* =========================================
+   4. NOTICE MANAGEMENT
+========================================= */
 router.post("/add-notice", async (req, res) => {
     try {
         const { title, content, target } = req.body; 
         const finalTarget = target || "student";
 
         const newNotice = new Notice({ 
-            title, 
-            content, 
-            target: finalTarget, 
-            postedBy: "Admin" 
+            title, content, target: finalTarget, postedBy: "Admin" 
         });
         
         const savedNotice = await newNotice.save();
 
-        // ✅ FIX: Dynamic Notification Targeting
-        let notificationCourse = "STUDENT_ALL"; // Default to all students
-
-        if (finalTarget === "faculty") {
-            notificationCourse = "FACULTY_ALL";
-        } else if (finalTarget === "student" || finalTarget === "all") {
-            notificationCourse = "STUDENT_ALL";
-        } else {
-            // Assume specific course (BCA, BBA, BCOM)
-            notificationCourse = finalTarget.toUpperCase(); 
-        }
+        let notificationCourse = "STUDENT_ALL"; 
+        if (finalTarget === "faculty") notificationCourse = "FACULTY_ALL";
+        else if (finalTarget === "student" || finalTarget === "all") notificationCourse = "STUDENT_ALL";
+        else notificationCourse = finalTarget.toUpperCase(); 
 
         await Notification.create({
             type: "notice",
@@ -148,115 +252,8 @@ router.delete("/delete-notice/:id", async (req, res) => {
 });
 
 /* =========================================
-   3. ADMISSION & USERS
+   5. USERS & COURSES
 ========================================= */
-
-router.post("/approve-application/:id", async (req, res) => {
-    try {
-        const app = await Application.findById(req.params.id);
-        if (!app) return res.status(404).json({ message: "Application not found" });
-
-        const password = Math.random().toString(36).slice(-8); 
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const userId = `ST${new Date().getFullYear()}${Math.floor(1000 + Math.random() * 9000)}`;
-
-        let finalPhotoPath = app.photo || "";
-        let finalMarksheetPath = app.marksheet || "";
-
-        const renameFile = (oldPath, prefix) => {
-            if (oldPath && fs.existsSync(oldPath)) {
-                const ext = path.extname(oldPath);
-                const newFilename = `${prefix}_${userId}${ext}`;
-                const newPath = path.join("uploads", newFilename);
-                try {
-                    fs.renameSync(oldPath, newPath);
-                    return newPath.replace(/\\/g, "/"); 
-                } catch (e) { return oldPath; }
-            }
-            return oldPath;
-        };
-
-        if (app.photo) finalPhotoPath = renameFile(app.photo, "PHOTO");
-        if (app.marksheet) finalMarksheetPath = renameFile(app.marksheet, "MARKSHEET");
-
-        const newUser = new User({
-            name: app.name, email: app.email, phone: app.phone, role: "student",
-            userId, password: hashedPassword, course: app.course,
-            photo: finalPhotoPath, marksheet: finalMarksheetPath,
-            dob: app.dob, address: app.address
-        });
-
-        await newUser.save();
-        app.status = "Approved";
-        await app.save();
-
-        const mailContent = `
-          <p>Congratulations, <strong>${app.name}</strong>! 🎉</p>
-          <p>Your admission application for <strong>${app.course}</strong> has been <strong>APPROVED</strong>. We are thrilled to welcome you to our campus.</p>
-          <p>Below are your login credentials. Please log in immediately and change your password.</p>
-          
-          <div class="cred-box">
-            <div class="cred-row"><strong>User ID:</strong> ${userId}</div>
-            <div class="cred-row"><strong>Password:</strong> ${password}</div>
-          </div>
-
-          <p style="text-align: center;">
-            <a href="http://localhost:3000/login" class="btn">Login to Portal</a>
-          </p>
-        `;
-
-        const mailOptions = {
-            from: process.env.EMAIL_USER,
-            to: app.email,
-            subject: "🎉 Admission Approved - Welcome Aboard!",
-            html: getEmailTemplate("Welcome to Campus!", mailContent)
-        };
-        await transporter.sendMail(mailOptions);
-
-        res.json({ success: true, message: "Student Approved!", userId, password });
-    } catch (err) {
-        console.error("Approval Error:", err);
-        res.status(500).json({ message: "Approval failed" });
-    }
-});
-
-router.post("/reject-application/:id", async (req, res) => {
-    try {
-        const { reason } = req.body;
-        const app = await Application.findById(req.params.id);
-        if (!app) return res.status(404).json({ message: "Application not found" });
-
-        const mailContent = `
-          <p>Dear <strong>${app.name}</strong>,</p>
-          <p>Thank you for your interest in our ${app.course} program. After careful review, we regret to inform you that we are unable to offer you admission at this time.</p>
-          
-          <div style="background-color: #fee2e2; border-left: 4px solid #ef4444; padding: 15px; margin: 20px 0; border-radius: 4px;">
-            <p style="margin: 0; font-weight: bold; color: #b91c1c;">Reason for Decision:</p>
-            <p style="margin: 5px 0; color: #7f1d1d;">${reason || "Administrative Decision regarding eligibility."}</p>
-          </div>
-          <p>You can re-apply later.</p> 
-        `;
-
-        const mailOptions = {
-            from: process.env.EMAIL_USER,
-            to: app.email,
-            subject: "Application Update - Campus System",
-            html: getEmailTemplate("Application Status Update", mailContent)
-        };
-        await transporter.sendMail(mailOptions);
-
-        if (app.photo && fs.existsSync(app.photo)) fs.unlinkSync(app.photo);
-        if (app.marksheet && fs.existsSync(app.marksheet)) fs.unlinkSync(app.marksheet);
-
-        await Application.findByIdAndDelete(req.params.id);
-        res.json({ success: true, message: "Application Rejected" });
-    } catch (err) {
-        console.error("Rejection Error:", err);
-        res.status(500).json({ message: "Rejection failed" });
-    }
-});
-
-// DASHBOARD STATS
 router.get("/stats", async (req, res) => {
     try {
         const students = await User.countDocuments({ role: "student" });
@@ -267,7 +264,6 @@ router.get("/stats", async (req, res) => {
     } catch (err) { res.status(500).json({ message: "Error fetching stats" }); }
 });
 
-// ADMIN PROFILE
 router.get("/profile/:id", async (req, res) => {
     try {
         const admin = await User.findById(req.params.id).select("-password");
@@ -295,7 +291,6 @@ router.put("/change-password/:id", async (req, res) => {
     } catch (err) { res.status(500).json({ message: "Error" }); }
 });
 
-// MANAGE USERS
 router.get("/users", async (req, res) => {
     try {
         const users = await User.find().select("-password").sort({ createdAt: -1 });
@@ -311,7 +306,7 @@ router.post("/add-user", async (req, res) => {
 
         const prefix = role === "admin" ? "AD" : "FA";
         const userId = `${prefix}${Math.floor(1000 + Math.random() * 9000)}`;
-        const password = Math.random().toString(36).slice(-8); // Generate 8 char pass
+        const password = Math.random().toString(36).slice(-8); 
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const newUser = new User({
@@ -319,38 +314,15 @@ router.post("/add-user", async (req, res) => {
         });
         await newUser.save();
         
-        // --- SEND EMAIL ---
-        const roleName = role === "admin" ? "Administrator" : "Faculty Member";
-        const mailContent = `
-          <p>Dear <strong>${name}</strong>,</p>
-          <p>Welcome to the team! You have been added to the Campus Management System as a <strong>${roleName}</strong>.</p>
-          <p>Here are your login credentials:</p>
-          
-          <div class="cred-box">
-            <div class="cred-row"><strong>User ID:</strong> ${userId}</div>
-            <div class="cred-row"><strong>Password:</strong> ${password}</div>
-          </div>
-
-          <p style="text-align: center;">
-            <a href="http://localhost:3000/login" class="btn">Login to Dashboard</a>
-          </p>
-          <p>Please change your password after logging in for the first time.</p>
-        `;
-
         const mailOptions = {
-            from: process.env.EMAIL_USER,
-            to: email,
-            subject: "🎉 Welcome to Campus System - Login Credentials",
-            html: getEmailTemplate("Account Created Successfully", mailContent)
+            from: process.env.EMAIL_USER, to: email,
+            subject: "Welcome to Campus System",
+            html: getEmailTemplate("Account Created", `<p>User ID: ${userId}<br>Password: ${password}</p>`)
         };
 
-        await transporter.sendMail(mailOptions);
-
+        transporter.sendMail(mailOptions).catch(e => console.log(e));
         res.json({ success: true, message: "User created & Email sent!" });
-    } catch (err) { 
-        console.error("Add User Error:", err);
-        res.status(500).json({ message: "User created but Email failed (Check Logs)" }); 
-    }
+    } catch (err) { res.status(500).json({ message: "User created but Email failed" }); }
 });
 
 router.delete("/delete-user/:id", async (req, res) => {
@@ -360,7 +332,6 @@ router.delete("/delete-user/:id", async (req, res) => {
     } catch (err) { res.status(500).json({ message: "Error" }); }
 });
 
-// APPLICATIONS
 router.get("/applications", async (req, res) => {
     try {
         const apps = await Application.find({ status: "Pending" }).sort({ createdAt: -1 });
@@ -368,7 +339,6 @@ router.get("/applications", async (req, res) => {
     } catch (err) { res.status(500).json({ message: "Error" }); }
 });
 
-// COURSES
 router.get("/courses", async (req, res) => {
     try {
         const courses = await Course.find();

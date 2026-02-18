@@ -1,10 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
-const { CloudinaryStorage } = require("multer-storage-cloudinary");
-const cloudinary = require("cloudinary").v2;
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
+const path = require("path");
+const fs = require("fs");
 
 // Models
 const Application = require("../models/Application");
@@ -34,54 +34,64 @@ const transporter = nodemailer.createTransport({
 });
 
 // =========================================
-// CLOUDINARY CONFIGURATION
+// ✅ TEMP STORAGE CONFIGURATION
 // =========================================
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    let folder = "uploads/";
+    
+    // Store applications in a specific subfolder
+    if (file.fieldname === "photo" || file.fieldname === "marksheet") {
+        folder = path.join(__dirname, "../uploads/applications");
+    } else if (file.fieldname === "file") {
+        folder = path.join(__dirname, "../uploads/doubts");
+    } else {
+        folder = path.join(__dirname, "../uploads/others");
+    }
 
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: "campus_admissions",
-    allowed_formats: ["jpg", "png", "jpeg", "pdf", "doc", "docx"],
-    resource_type: "auto"
+    // Ensure folder exists
+    if (!fs.existsSync(folder)) {
+      fs.mkdirSync(folder, { recursive: true });
+    }
+    cb(null, folder);
+  },
+  filename: (req, file, cb) => {
+    // ✅ Logic: TEMP_TYPE_EMAIL_TIMESTAMP.ext
+    // Clean email to be filename-safe (replace special chars with _)
+    const emailStr = req.body.email ? req.body.email.replace(/[^a-zA-Z0-9]/g, "_") : "applicant";
+    const fileType = file.fieldname.toUpperCase(); // PHOTO or MARKSHEET
+    const ext = path.extname(file.originalname);
+    
+    // Example: TEMP_PHOTO_john_gmail_com_1789922.jpg
+    cb(null, `TEMP_${fileType}_${emailStr}_${Date.now()}${ext}`);
   }
 });
 
 const upload = multer({ storage });
 
-// HTML Email Template Helper
+// HTML Email Helper
 const getHtmlTemplate = (title, bodyContent) => `
 <!DOCTYPE html>
 <html>
-<head>
-  <style>
-    body { font-family: 'Segoe UI', sans-serif; background-color: #f8fafc; margin: 0; padding: 0; }
-    .container { max-width: 600px; margin: 30px auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-    .header { background: #0f172a; padding: 40px; text-align: center; color: white; }
-    .content { padding: 40px; color: #334155; }
-    .footer { background: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #64748b; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header"><h1>🎓 Admission</h1></div>
-    <div class="content"><h2>${title}</h2>${bodyContent}</div>
-    <div class="footer">© ${new Date().getFullYear()} Campus Management System</div>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f4; padding: 20px;">
+  <div style="max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+    <h2 style="color: #1e293b; margin-top: 0;">${title}</h2>
+    <div style="color: #475569; line-height: 1.6;">${bodyContent}</div>
+    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+    <p style="font-size: 12px; color: #94a3b8; text-align: center;">© ${new Date().getFullYear()} Campus Management System</p>
   </div>
 </body>
 </html>
 `;
 
 /* =========================================
-   1. APPLY FOR ADMISSION
+   1. APPLY FOR ADMISSION (Saves Temp Files)
 ========================================= */
 router.post("/apply", upload.fields([{ name: "photo" }, { name: "marksheet" }]), async (req, res) => {
     try {
-      const { email, name, phone, course } = req.body;
+      const { email, name, course } = req.body;
+
+      // Check existing users/applications
       const existingStudent = await User.findOne({ email });
       if (existingStudent) return res.status(400).json({ message: "You are already enrolled as a student." });
 
@@ -89,23 +99,27 @@ router.post("/apply", upload.fields([{ name: "photo" }, { name: "marksheet" }]),
       if (pendingApp) return res.status(400).json({ message: "Application already submitted!" });
 
       const newApp = new Application(req.body);
-      if (req.files['photo']) newApp.photo = req.files['photo'][0].path;
-      if (req.files['marksheet']) newApp.marksheet = req.files['marksheet'][0].path;
+
+      // ✅ Store the RELATIVE path (e.g., "uploads/applications/TEMP_PHOTO_....jpg")
+      if (req.files['photo']) {
+        newApp.photo = "uploads/applications/" + req.files['photo'][0].filename;
+      }
+      if (req.files['marksheet']) {
+        newApp.marksheet = "uploads/applications/" + req.files['marksheet'][0].filename;
+      }
       
       await newApp.save();
 
       // Email Notification
-      const mailContent = `
-        <p>Dear <strong>${name}</strong>,</p>
-        <p>We received your application for <strong>${course}</strong>.</p>
-        <p>Our team will review it shortly.</p>
-      `;
-
       const mailOptions = {
-        from: `Campus Admissions <${process.env.EMAIL_USER}>`, 
+        from: `Admissions <${process.env.EMAIL_USER}>`, 
         to: email,
         subject: "✅ Application Received",
-        html: getHtmlTemplate("Application Submitted", mailContent)
+        html: getHtmlTemplate("Application Submitted", `
+          <p>Dear <strong>${name}</strong>,</p>
+          <p>We have received your application for <strong>${course}</strong>.</p>
+          <p>Our team will review your documents shortly.</p>
+        `)
       };
       
       transporter.sendMail(mailOptions).catch(err => console.log("Email Failed", err));
@@ -113,31 +127,22 @@ router.post("/apply", upload.fields([{ name: "photo" }, { name: "marksheet" }]),
       res.json({ message: "Application submitted successfully!" });
     } catch (err) { 
         console.error("Apply Error:", err);
-        res.status(500).json({ message: "Application failed (Check Email)" }); 
+        res.status(500).json({ message: "Application failed" }); 
     }
 });
 
 /* =========================================
-   2. GET MATERIALS (STRICT COURSE MATCH)
+   2. GET MATERIALS
 ========================================= */
 router.get("/materials/:course/:subject", async (req, res) => {
   try {
     const rawCourse = decodeURIComponent(req.params.course).toUpperCase();
     const decodedSubject = decodeURIComponent(req.params.subject).trim();
     
-    // Normalize Course
     let normalizedCourse = "BCA"; 
-    if (rawCourse.includes("BBA") || rawCourse.includes("BUSINESS")) {
-        normalizedCourse = "BBA";
-    } 
-    else if (rawCourse.includes("BCOM") || rawCourse.includes("COMMERCE")) {
-        normalizedCourse = "BCOM";
-    } 
-    else {
-        normalizedCourse = "BCA";
-    }
+    if (rawCourse.includes("BBA") || rawCourse.includes("BUSINESS")) normalizedCourse = "BBA";
+    else if (rawCourse.includes("BCOM") || rawCourse.includes("COMMERCE")) normalizedCourse = "BCOM";
 
-    // Case Insensitive Subject Search
     const materials = await Material.find({ 
         course: normalizedCourse, 
         subject: { $regex: new RegExp(`^${decodedSubject}$`, "i") } 
@@ -182,7 +187,7 @@ router.post("/mark-attendance", async (req, res) => {
       studentId, subject, date: { $gte: startOfDay, $lte: endOfDay }
     });
 
-    if (existing) return res.status(400).json({ message: "Attendance already marked for today." });
+    if (existing) return res.status(400).json({ message: "Attendance already marked." });
 
     await new Attendance({ studentId, subject, status: "Present", date: new Date() }).save();
     res.json({ success: true, message: `Present marked for ${subject}!` });
@@ -234,7 +239,7 @@ router.put("/change-password/:id", async (req, res) => {
 });
 
 /* =========================================
-   5. GET NOTIFICATIONS
+   5. NOTIFICATIONS
 ========================================= */
 router.get("/notifications/:studentId", async (req, res) => {
   try {
@@ -275,7 +280,7 @@ router.get("/notifications/:studentId", async (req, res) => {
 });
 
 /* =========================================
-   6. FACULTY & DOUBTS (✅ FIXED FETCH LOGIC)
+   6. FACULTY & DOUBTS
 ========================================= */
 router.get("/faculty-list/:department", async (req, res) => {
   try {
@@ -286,19 +291,16 @@ router.get("/faculty-list/:department", async (req, res) => {
        return res.json(allFaculty);
     }
 
-    // ✅ SMART MATCHING: If student is "BCA", find faculty in "Computer Science"
     let searchRegex;
     if (rawDept.includes("BCA") || rawDept.includes("COMPUTER") || rawDept.includes("CS")) {
         searchRegex = /BCA|COMPUTER|CS|IT/i;
-    } else if (rawDept.includes("BBA") || rawDept.includes("BUSINESS") || rawDept.includes("MANAGEMENT")) {
+    } else if (rawDept.includes("BBA") || rawDept.includes("BUSINESS")) {
         searchRegex = /BBA|BUSINESS|MANAGEMENT/i;
-    } else if (rawDept.includes("BCOM") || rawDept.includes("COMMERCE") || rawDept.includes("ACCOUNT")) {
+    } else if (rawDept.includes("BCOM") || rawDept.includes("COMMERCE")) {
         searchRegex = /BCOM|COMMERCE|ACCOUNT/i;
     } else {
         searchRegex = new RegExp(rawDept, "i");
     }
-
-    console.log(`🔍 Searching Faculty: ${rawDept} -> Regex: ${searchRegex}`);
 
     const faculty = await User.find({ 
         role: "faculty", 
@@ -317,7 +319,7 @@ router.post("/ask-doubt", upload.single("file"), async (req, res) => {
     const newQuery = new Query({
       student: studentId, studentName, faculty: facultyId, 
       course, department, subject, question,
-      file: req.file ? req.file.path : null 
+      file: req.file ? "uploads/doubts/" + req.file.filename : null 
     });
     await newQuery.save();
     res.json({ success: true, message: "Doubt sent!" });
@@ -332,7 +334,7 @@ router.get("/my-doubts/:studentId", async (req, res) => {
 });
 
 /* =========================================
-   7. UTILS, TIMETABLE & DOWNLOAD (FIXED)
+   7. UTILS & DOWNLOAD
 ========================================= */
 router.get("/notices", async (req, res) => {
   try {
@@ -366,26 +368,23 @@ router.post("/view-material/:materialId", async (req, res) => {
     } catch (err) { res.status(500).json({ success: false }); }
 });
   
-// ✅ FIXED: DOWNLOAD CLOUDINARY FILE
 router.get("/download/:materialId", async (req, res) => {
     try {
       const material = await Material.findById(req.params.materialId);
       if (!material) return res.status(404).json({ message: "Not found" });
       
-      if (material.filePath.startsWith("http")) {
-          return res.redirect(material.filePath);
-      } 
-      res.download(material.filePath);
+      if (material.filePath.startsWith("http")) return res.redirect(material.filePath);
+      
+      const absolutePath = path.join(__dirname, "../", material.filePath);
+      if (fs.existsSync(absolutePath)) res.download(absolutePath);
+      else res.status(404).json({ message: "File not found on server" });
+
     } catch (err) { res.status(500).json({ message: "Download failed" }); }
 });
 
-// ✅ FIXED: TIMETABLE FETCHING (ALL UPCOMING)
 router.get("/timetable/:course", async (req, res) => {
   try {
-    const startOfDay = new Date(); 
-    startOfDay.setHours(0,0,0,0);
-    
-    // Normalize Course for Timetable
+    const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
     const rawCourse = req.params.course.toUpperCase();
     let normalizedCourse = "BCA";
     if (rawCourse.includes("BBA") || rawCourse.includes("BUSINESS")) normalizedCourse = "BBA";
@@ -410,9 +409,6 @@ router.get("/timetable/:course", async (req, res) => {
   }
 });
 
-/* =========================================
-   8. PAYMENT
-========================================= */
 router.post("/pay-fees", async (req, res) => {
     try {
       const { studentId, amount, semester } = req.body;

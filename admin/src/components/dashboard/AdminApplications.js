@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { API_BASE_URL, BASE_URL } from "../../services/apiConfig"; // ✅ Import Config
 
 const AdminApplications = () => {
   const [applications, setApplications] = useState([]);
@@ -7,8 +8,8 @@ const AdminApplications = () => {
   // Fetch pending applications
   const fetchApplications = async () => {
     try {
-      // Fetch only pending applications to keep the list clean
-      const res = await fetch(`http://localhost:5000/api/admin/applications`);
+      // ✅ Use API_BASE_URL
+      const res = await fetch(`${API_BASE_URL}/admin/applications`);
       const data = await res.json();
       setApplications(data);
     } catch (err) { 
@@ -20,14 +21,23 @@ const AdminApplications = () => {
 
   useEffect(() => { fetchApplications(); }, []);
 
+  // ✅ SMART IMAGE URL HELPER
+  const getImageUrl = (path) => {
+    if (!path) return null;
+    if (path.startsWith("http") || path.startsWith("https")) {
+      return path; // Return Cloudinary/External URL as is
+    }
+    // Return Local Server URL
+    return `${BASE_URL}/${path.replace(/\\/g, "/")}`;
+  };
+
   // Handle Approve/Reject
   const handleAction = async (id, status) => {
     let reason = "";
 
-    // ✅ If Rejecting, Ask for Reason
     if (status === 'rejected') {
       reason = prompt("Please enter the reason for rejection:");
-      if (reason === null) return; // Cancelled
+      if (reason === null) return; 
       if (reason.trim() === "") {
         alert("Rejection reason is required!");
         return;
@@ -36,14 +46,13 @@ const AdminApplications = () => {
       if(!window.confirm(`Are you sure you want to approve this student?`)) return;
     }
 
-    // ✅ FIXED: Correct endpoint names to match backend
     const endpoint = status === 'approved' ? 'approve-application' : 'reject-application';
 
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/${endpoint}/${id}`, {
+      // ✅ Use API_BASE_URL
+      const res = await fetch(`${API_BASE_URL}/admin/${endpoint}/${id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // ✅ Send reason in body (only used for rejection)
         body: JSON.stringify({ reason }) 
       });
       
@@ -51,7 +60,7 @@ const AdminApplications = () => {
       
       if (res.ok) {
         alert(data.message || "Action Successful");
-        fetchApplications(); // Refresh list immediately
+        fetchApplications(); 
       } else {
         alert(`❌ Error: ${data.message}`);
       }
@@ -79,7 +88,7 @@ const AdminApplications = () => {
               <div className="flex-shrink-0">
                 {app.photo ? (
                   <img 
-                    src={`http://localhost:5000/${app.photo.replace(/\\/g, "/")}`} 
+                    src={getImageUrl(app.photo)} 
                     alt={app.name} 
                     className="w-24 h-24 rounded-2xl object-cover border-2 border-white shadow-md"
                     onError={(e) => {e.target.onerror = null; e.target.src="https://via.placeholder.com/150"}}
@@ -114,7 +123,7 @@ const AdminApplications = () => {
                   {/* Marksheet Link */}
                   {app.marksheet && (
                     <a 
-                      href={`http://localhost:5000/${app.marksheet.replace(/\\/g, "/")}`} 
+                      href={getImageUrl(app.marksheet)} 
                       target="_blank" 
                       rel="noreferrer"
                       className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1 bg-blue-50 px-3 py-2 rounded-lg"
@@ -123,7 +132,7 @@ const AdminApplications = () => {
                     </a>
                   )}
 
-                  <div className="flex-1"></div> {/* Spacer */}
+                  <div className="flex-1"></div> 
 
                   <button 
                     onClick={() => handleAction(app._id, "approved")} 
