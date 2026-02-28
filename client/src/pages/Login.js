@@ -201,15 +201,13 @@ const Login = () => {
   }
 
   return (
-    // ✨ CHANGED: Main background is now a soft, clean slate-50
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-slate-50 font-sans selection:bg-rose-200 selection:text-brand-dark">
       
-      {/* ✨ CHANGED: Soft, light blurred floating orbs instead of heavy background gradients */}
+      {/* Soft, light blurred floating orbs */}
       <div className="absolute top-[-10%] left-[-10%] w-[40rem] h-[40rem] bg-brand-primary/10 rounded-full mix-blend-multiply filter blur-[100px] animate-blob"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[40rem] h-[40rem] bg-blue-500/10 rounded-full mix-blend-multiply filter blur-[100px] animate-blob animation-delay-2000"></div>
       <div className="absolute top-[20%] left-[50%] w-[30rem] h-[30rem] bg-rose-400/10 rounded-full mix-blend-multiply filter blur-[80px] animate-blob animation-delay-4000"></div>
 
-      {/* ✨ CHANGED: Text color updated to gray-600 to be visible on the light background */}
       <Link 
         to="/" 
         className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-gray-600 hover:text-brand-primary font-medium transition-all hover:-translate-x-1 z-10"
@@ -226,9 +224,14 @@ const Login = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md border border-gray-100 mb-4">
-             <img src="/logo3.png" alt="Logo" className="w-10 h-10 object-contain" onError={(e) => e.target.style.display='none'} />
-             {/* Fallback icon if logo fails to load */}
-             <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-brand-primary absolute -z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 14l9-5-9-5-9 5 9 5z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 14l9-5-9-5-9 5 9 5z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 14v7" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 9v4M3 9v4" /></svg>
+            
+             {/* ✅ REPLACED: Custom SVG Shield Logo with a 'G' for Global College */}
+             <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+               <path d="M20 2L4 9V19C4 28.3 10.9 36.9 20 39C29.1 36.9 36 28.3 36 19V9L20 2Z" fill="#e11d48"/>
+               <path d="M20 2L4 9V19C4 28.3 10.9 36.9 20 39V2Z" fill="#be123c"/>
+               <path d="M25 14H16C14.9 14 14 14.9 14 16V24C14 25.1 14.9 26 16 26H24C25.1 26 26 25.1 26 24V19H19V21.5H23.5V23.5H16.5V16.5H25V14Z" fill="white"/>
+             </svg>
+
           </div>
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
             {view === "login" ? "Welcome Back" : "Reset Password"}
@@ -363,7 +366,7 @@ const Login = () => {
 
                         <div className="pt-2 space-y-3">
                             <button type="submit" disabled={loading} className="w-full py-4 bg-gradient-to-r from-gray-900 to-gray-800 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300">
-                                {loading ? "Locating Account..." : "Send OTP"}
+                                {loading ? "Locating Account..." : "Send Reset Link"}
                             </button>
                             <button type="button" onClick={() => setView("login")} className="w-full py-3 text-sm font-semibold text-gray-500 hover:text-gray-800 transition-colors">
                                 ← Back to Login

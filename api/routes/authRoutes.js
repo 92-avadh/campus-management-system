@@ -23,34 +23,45 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// ✅ UNIFIED EMAIL TEMPLATE BUILDER
+// ✅ UNIFIED EMAIL TEMPLATE BUILDER (UPDATED FOR GLOBAL COLLEGE)
 const getHtmlTemplate = (title, bodyContent) => `
 <!DOCTYPE html>
 <html>
 <head>
   <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; margin: 0; padding: 0; }
-    .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    .header { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); padding: 30px; text-align: center; color: white; }
-    .header h1 { margin: 10px 0 0; font-size: 24px; letter-spacing: 1px; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #f1f5f9; }
+    
+    /* Changed to Global College Red Theme */
+    .header { background: linear-gradient(135deg, #e11d48 0%, #9f1239 100%); padding: 35px 30px; text-align: center; color: white; }
+    .header h1 { margin: 15px 0 0; font-size: 28px; letter-spacing: 2px; font-weight: 800; text-transform: uppercase; }
+    .header p { margin: 5px 0 0; color: #fda4af; font-size: 12px; letter-spacing: 3px; font-weight: 600; }
+    
     .content { padding: 40px 30px; color: #334155; line-height: 1.6; }
-    .otp-box { background-color: #f1f5f9; border: 2px dashed #94a3b8; border-radius: 8px; padding: 15px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #1e293b; margin: 20px 0; }
-    .footer { background-color: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; }
+    .content h2 { color: #be123c; margin-top: 0; font-size: 22px; }
+    
+    /* Modernized OTP Box */
+    .otp-box { background-color: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 20px; text-align: center; font-size: 36px; font-family: monospace; font-weight: 900; letter-spacing: 8px; color: #0f172a; margin: 30px 0; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+    
+    .footer { background-color: #f8fafc; padding: 25px; text-align: center; font-size: 13px; color: #64748b; border-top: 1px solid #e2e8f0; }
+    .footer strong { color: #0f172a; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <div style="font-size: 40px;">🎓</div>
-      <h1>Campus Management System</h1>
+      <div style="font-size: 45px; background: white; width: 80px; height: 80px; line-height: 80px; border-radius: 50%; margin: 0 auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">🏛️</div>
+      <h1>Global College</h1>
+      <p>EXCELLENCE IN EDUCATION</p>
     </div>
     <div class="content">
-      <h2 style="color: #1e3a8a; margin-top: 0;">${title}</h2>
+      <h2>${title}</h2>
       ${bodyContent}
     </div>
     <div class="footer">
-      <p>© ${new Date().getFullYear()} Campus Management System. All rights reserved.</p>
-      <p>Need help? Contact support@campus.edu</p>
+      <p>© ${new Date().getFullYear()} <strong>Global College</strong>. All rights reserved.</p>
+      <p>Need help? Contact admissions@globalcollege.edu</p>
+      <p style="font-size: 10px; color: #cbd5e1; margin-top: 15px;">Automated message sent securely via Campus Management System.</p>
     </div>
   </div>
 </body>
@@ -91,16 +102,17 @@ router.post("/login-step1", async (req, res) => {
     // ✅ Response sent IMMEDIATELY
     res.json({ message: "OTP Sent", email: user.email });
 
-    // ✅ Email sending happens in BACKGROUND (Logs removed)
+    // ✅ Email sending happens in BACKGROUND
     const mailOptions = {
-      from: `Campus Admin <${process.env.EMAIL_USER}>`, 
+      // 🌟 Hides the raw email behind the official name
+      from: `"Global College Admin" <${process.env.EMAIL_USER}>`, 
       to: user.email,
-      subject: "🔐 Login Verification",
-      html: getHtmlTemplate("Login OTP", `
-        <p>Hello ${user.name},</p>
-        <p>Your OTP is:</p>
+      subject: "🔐 Global College - Login Verification",
+      html: getHtmlTemplate("Login Authentication", `
+        <p>Hello <strong>${user.name}</strong>,</p>
+        <p>A login attempt was made to your Global College portal account. Please use the secure OTP below to complete your sign-in:</p>
         <div class="otp-box">${otp}</div>
-        <p style="font-size:12px; color:gray;">Sent via: ${process.env.EMAIL_USER}</p>
+        <p style="color: #64748b; font-size: 14px;">⚠️ This code is valid for 5 minutes. Do not share this code with anyone.</p>
       `)
     };
 
@@ -156,14 +168,15 @@ router.post("/forgot-password-step1", async (req, res) => {
     res.json({ success: true, message: "OTP sent to your email" });
 
     const mailOptions = {
-      from: `Campus Support <${process.env.EMAIL_USER}>`,
+      // 🌟 Hides the raw email behind the official name
+      from: `"Global College Support" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: "🔑 Password Reset Request",
+      subject: "🔑 Global College - Password Reset Request",
       html: getHtmlTemplate("Reset Your Password", `
         <p>Hi <strong>${user.name}</strong>,</p>
-        <p>You requested to reset your password. Use the code below:</p>
+        <p>We received a request to reset the password for your Global College account. Please use the verification code below:</p>
         <div class="otp-box">${otp}</div>
-        <p>⚠️ This code expires in 10 minutes.</p>
+        <p style="color: #64748b; font-size: 14px;">⚠️ This code expires in 10 minutes. If you did not request this, please ignore this email or contact support immediately.</p>
       `)
     };
 
@@ -216,10 +229,10 @@ router.get("/test-email", async (req, res) => {
   try {
     await transporter.verify();
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: `"Global College IT" <${process.env.EMAIL_USER}>`,
       to: process.env.EMAIL_USER,
-      subject: "✅ Test Email",
-      text: "Configuration is working!"
+      subject: "✅ Global College - System Test",
+      text: "Email Gateway is functioning correctly."
     });
     res.json({ success: true, message: "Email Sent!" });
   } catch (error) {

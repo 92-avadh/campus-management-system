@@ -43,7 +43,7 @@ const About = () => {
       {/* ================= HEADER SECTION ================= */}
       <div className="bg-red-900 text-white py-20">
         <div className="container mx-auto px-6 text-center">
-          <h1 className="text-4xl md:text-5xl font-extrabold mb-4">About SDJIC</h1>
+          <h1 className="text-4xl md:text-5xl font-extrabold mb-4">About GLOBAL COLLEGE</h1>
           <p className="text-red-200 text-lg max-w-2xl mx-auto">
             A legacy of excellence, innovation, and holistic development since 2010.
           </p>
@@ -58,7 +58,7 @@ const About = () => {
             <h2 className="text-red-900 text-sm font-bold uppercase tracking-widest mb-2">Who We Are</h2>
             <h3 className="text-3xl font-bold text-gray-900 mb-6">Shaping Future Leaders</h3>
             <p className="text-gray-600 leading-relaxed mb-6">
-              SDJ International College is a premier institution dedicated to providing world-class education in Computer Science, Management, and Commerce. Our focus goes beyond textbooks, emphasizing practical skills, ethical leadership, and global perspectives.
+              GLOBAL College is a premier institution dedicated to providing world-class education in Computer Science, Management, and Commerce. Our focus goes beyond textbooks, emphasizing practical skills, ethical leadership, and global perspectives.
             </p>
             <p className="text-gray-600 leading-relaxed">
               With a campus spread over 10 acres, we offer state-of-the-art infrastructure including modern labs, a digital library, and sports complexes that rival the best in the country.
@@ -117,17 +117,28 @@ const About = () => {
         </div>
       </section>
 
-      {/* ================= PRINCIPAL MESSAGE ================= */}
-      <section className="py-20 bg-white">
+     {/* ================= PRINCIPAL MESSAGE ================= */}
+     <section className="py-24 bg-white relative overflow-hidden">
+        {/* Soft background glow */}
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[40rem] h-[40rem] bg-red-50 rounded-full blur-[100px] -z-10"></div>
+        
         <div className="container mx-auto px-6 max-w-4xl text-center">
-          <div className="mb-8 relative inline-block">
-             <img src="/aditibhatt.jpg" alt="Principal" className="w-32 h-32 rounded-full object-cover mx-auto shadow-lg" />
-             <div className="absolute bottom-0 right-0 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full">Principal</div>
+          
+          {/* ✅ PERFECTLY CENTERED PHOTO WRAPPER */}
+          <div className="flex justify-center mb-10">
+            <div className="relative inline-block">
+               <img src="/aditibhatt.png" alt="Principal" className="w-36 h-36 rounded-full object-cover shadow-2xl border-4 border-white" />
+               <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 bg-red-600 text-white text-xs font-bold px-5 py-1.5 rounded-full shadow-md whitespace-nowrap tracking-wide">
+                 Principal
+               </div>
+            </div>
           </div>
-          <blockquote className="text-2xl font-serif italic text-gray-700 mb-6">
-            "At SDJIC, education is not just about acquiring degrees; it is about building character. We strive to create an environment where intellect meets empathy."
+
+          <blockquote className="text-2xl md:text-3xl font-serif italic text-gray-800 mb-8 leading-relaxed">
+            "At Global College, education is not just about acquiring degrees; it is about building character. We strive to create an environment where intellect meets empathy, preparing students for the challenges of tomorrow."
           </blockquote>
-          <cite className="font-bold text-gray-900 not-italic">- Dr. Aditi Bhatt</cite>
+          <cite className="font-bold text-gray-900 not-italic text-lg block">- Dr. Sarah Jenkins</cite>
+          <span className="text-gray-500 text-sm mt-1 block">Head of Institution</span>
         </div>
       </section>
 

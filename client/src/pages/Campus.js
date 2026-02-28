@@ -85,7 +85,7 @@ const Campus = () => {
         <div className="container mx-auto px-6 text-center">
           <h1 className="text-4xl md:text-5xl font-extrabold mb-4">Explore Our Campus</h1>
           <p className="text-red-200 text-lg max-w-2xl mx-auto">
-            Experience the world-class infrastructure and vibrant atmosphere at SDJIC.
+            Experience the world-class infrastructure and vibrant atmosphere at Global College.
           </p>
         </div>
       </div>

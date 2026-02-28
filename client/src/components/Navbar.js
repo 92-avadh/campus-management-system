@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
 
-  // SVG Icons
+  // SVG Icons for Mobile Menu
   const MenuIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -21,13 +21,26 @@ const Navbar = () => {
     <nav className="bg-red-900/95 backdrop-blur-md text-white shadow-md sticky top-0 z-50 transition-all duration-300">
       <div className="container mx-auto px-6 py-3 relative z-50 flex justify-between items-center">
 
-        {/* Logo Section */}
-        <Link to="/" className="flex items-center hover:opacity-90 transition-opacity" onClick={() => setIsOpen(false)}>
-          <img
-            src="/logo.png"
-            alt="SDJ International College"
-            className="h-16 w-auto object-contain bg-white rounded-lg shadow-sm"
-          />
+        {/* LOGO SECTION - Updated for Global College */}
+        <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity" onClick={() => setIsOpen(false)}>
+          
+          {/* Custom SVG Shield Logo with a 'G' */}
+          <div className="bg-white p-1.5 rounded-lg shadow-sm">
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              {/* Shield Base */}
+              <path d="M20 2L4 9V19C4 28.3 10.9 36.9 20 39C29.1 36.9 36 28.3 36 19V9L20 2Z" fill="#e11d48"/>
+              {/* Shield Left Shadow for 3D effect */}
+              <path d="M20 2L4 9V19C4 28.3 10.9 36.9 20 39V2Z" fill="#be123c"/>
+              {/* Inner 'G' for Global */}
+              <path d="M25 14H16C14.9 14 14 14.9 14 16V24C14 25.1 14.9 26 16 26H24C25.1 26 26 25.1 26 24V19H19V21.5H23.5V23.5H16.5V16.5H25V14Z" fill="white"/>
+            </svg>
+          </div>
+
+          {/* Fictional College Name */}
+          <div className="flex flex-col">
+            <span className="font-extrabold text-lg tracking-wide leading-tight">GLOBAL</span>
+            <span className="text-[0.70rem] font-bold tracking-widest text-red-200">COLLEGE</span>
+          </div>
         </Link>
 
         {/* Desktop Menu */}
