@@ -1,156 +1,46 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import logo from "../logo3.png"; 
+import React, { useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const Login = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
-  const [userId, setUserId] = useState("");
-  const [password, setPassword] = useState("");
-  const [otp, setOtp] = useState("");
-  const [loading, setLoading] = useState(false);
+  const location = useLocation();
 
-  const handleStep1 = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      // ✅ FIX: Added '/api' prefix to match server routes
-      const response = await fetch(`http://localhost:5000/api/auth/login-step1`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, password, role: "admin" })
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setStep(2); 
-      } else {
-        alert(`❌ Login Failed: ${data.message}`);
+  useEffect(() => {
+    // 1. Grab the token and user data from the URL (sent from Port 3000)
+    const queryParams = new URLSearchParams(location.search);
+    const token = queryParams.get("token");
+    const userString = queryParams.get("user");
+
+    if (token && userString) {
+      try {
+        const user = JSON.parse(userString);
+        const sessionData = { ...user, token };
+
+        // 2. Save it to Admin's LocalStorage securely
+        localStorage.setItem("adminUser", JSON.stringify(sessionData));
+
+        // 3. Remove the token from the URL for security and redirect to Dashboard
+        navigate("/", { replace: true }); 
+
+      } catch (error) {
+        console.error("Failed to parse user data", error);
+        window.location.href = "http://localhost:3000/login";
       }
-    } catch (err) {
-      console.error(err);
-      alert("⚠️ Server Connection Error");
-    } finally {
-      setLoading(false);
+    } else {
+      // 4. If someone tries to visit localhost:3001/login directly without a token,
+      // kick them back to the main login portal on Port 3000.
+      window.location.href = "http://localhost:3000/login";
     }
-  };
+  }, [navigate, location]);
 
-  const handleStep2 = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      // ✅ FIX: Added '/api' prefix to match server routes
-      const response = await fetch(`http://localhost:5000/api/auth/login-step2`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, otp })
-      });
-      const data = await response.json();
-      if (response.ok) {
-        localStorage.setItem("adminUser", JSON.stringify(data));
-        navigate("/dashboard");
-      } else {
-        alert(`❌ OTP Error: ${data.message}`);
-      }
-    } catch (err) {
-      console.error(err);
-      alert("⚠️ Server Error during verification");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Provide a tiny loading screen while the redirect happens
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 25 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -25 }}
-      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-      className="min-h-screen bg-gray-100 flex items-center justify-center font-sans"
-    >
-      <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-sm flex flex-col items-center border-t-8 border-red-700">
-        <div className="w-24 h-24 mb-6">
-          <img src={logo} alt="Admin Logo" className="w-full h-full object-contain" />
-        </div>
-
-        <h2 className="text-gray-800 text-2xl font-bold mb-2 uppercase tracking-wide">
-          {step === 1 ? "Admin Portal" : "Security Check"}
-        </h2>
-        <p className="text-gray-500 text-sm mb-8">
-          {step === 1 ? "Please sign in to continue" : "Enter the verification code"}
-        </p>
-
-        {step === 1 && (
-          <form onSubmit={handleStep1} className="w-full space-y-5">
-            <div>
-              <label className="text-gray-600 text-xs font-bold uppercase tracking-wider block mb-1">Admin ID</label>
-              <input 
-                type="text" 
-                className="w-full bg-gray-50 text-gray-900 p-4 rounded-xl border border-gray-200 focus:border-red-600 outline-none transition font-medium"
-                placeholder="userID"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <label className="text-gray-600 text-xs font-bold uppercase tracking-wider block mb-1">Password</label>
-              <input 
-                type="password" 
-                className="w-full bg-gray-50 text-gray-900 p-4 rounded-xl border border-gray-200 focus:border-red-600 outline-none transition font-medium"
-                placeholder="••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            <button 
-              disabled={loading}
-              className="w-full bg-red-700 hover:bg-red-800 text-white font-bold py-4 rounded-xl transition shadow-lg active:scale-95 disabled:opacity-50"
-            >
-              {loading ? "Checking Credentials..." : "Login Securely"}
-            </button>
-          </form>
-        )}
-
-        {step === 2 && (
-          <form onSubmit={handleStep2} className="w-full space-y-6 text-center">
-            <div className="bg-red-50 p-4 rounded-lg text-sm text-red-800 border border-red-100">
-              ⚡ Check your server console for the OTP code
-            </div>
-            <div>
-                <input 
-                type="text" 
-                autoComplete="off"              
-                maxLength="6"
-                className="w-full bg-white text-gray-900 text-3xl text-center tracking-[0.5rem] p-4 rounded-xl border-2 border-gray-200 focus:border-red-600 outline-none font-bold placeholder-gray-300"
-                placeholder="------"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                autoFocus
-                required
-                />
-            </div>
-            <button 
-              disabled={loading}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl transition shadow-lg active:scale-95 disabled:opacity-50"
-            >
-              {loading ? "Verifying..." : "Verify & Access"}
-            </button>
-            <button 
-              type="button" 
-              onClick={() => setStep(1)} 
-              className="text-gray-400 text-xs hover:text-red-600 transition underline"
-            >
-              ← Back to Login
-            </button>
-          </form>
-        )}
+    <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white font-sans">
+      <div className="text-center space-y-4">
+        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <h2 className="text-xl font-bold animate-pulse">Authenticating Admin...</h2>
       </div>
-      <div className="absolute bottom-6 text-gray-400 text-xs">
-        &copy; 2026 SDJIC Campus System
-      </div>
-    </motion.div>
+    </div>
   );
 };
 
