@@ -23,7 +23,7 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// ✅ UNIFIED EMAIL TEMPLATE BUILDER (UPDATED FOR GLOBAL COLLEGE)
+// ✅ UNIFIED EMAIL TEMPLATE BUILDER 
 const getHtmlTemplate = (title, bodyContent) => `
 <!DOCTYPE html>
 <html>
@@ -31,18 +31,12 @@ const getHtmlTemplate = (title, bodyContent) => `
   <style>
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; margin: 0; padding: 0; }
     .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #f1f5f9; }
-    
-    /* Changed to Global College Red Theme */
     .header { background: linear-gradient(135deg, #e11d48 0%, #9f1239 100%); padding: 35px 30px; text-align: center; color: white; }
     .header h1 { margin: 15px 0 0; font-size: 28px; letter-spacing: 2px; font-weight: 800; text-transform: uppercase; }
     .header p { margin: 5px 0 0; color: #fda4af; font-size: 12px; letter-spacing: 3px; font-weight: 600; }
-    
     .content { padding: 40px 30px; color: #334155; line-height: 1.6; }
     .content h2 { color: #be123c; margin-top: 0; font-size: 22px; }
-    
-    /* Modernized OTP Box */
     .otp-box { background-color: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 20px; text-align: center; font-size: 36px; font-family: monospace; font-weight: 900; letter-spacing: 8px; color: #0f172a; margin: 30px 0; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
-    
     .footer { background-color: #f8fafc; padding: 25px; text-align: center; font-size: 13px; color: #64748b; border-top: 1px solid #e2e8f0; }
     .footer strong { color: #0f172a; }
   </style>
@@ -76,7 +70,11 @@ const getHtmlTemplate = (title, bodyContent) => `
 router.post("/login-step1", async (req, res) => {
   try {
     let { userId, password, role } = req.body;
-    if (!userId || !password) return res.status(400).json({ message: "All fields are required" });
+    
+    // ✅ FIX 1: Ensure role exists before checking .toLowerCase() to prevent server crash
+    if (!userId || !password || !role) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
     
     userId = userId.trim();
 
@@ -96,15 +94,11 @@ router.post("/login-step1", async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpires = Date.now() + 5 * 60 * 1000; 
 
-    // ✅ DB Update first (Blocking but fast)
     await User.updateOne({ _id: user._id }, { $set: { otp, otpExpires } });
 
-    // ✅ Response sent IMMEDIATELY
     res.json({ message: "OTP Sent", email: user.email });
 
-    // ✅ Email sending happens in BACKGROUND
     const mailOptions = {
-      // 🌟 Hides the raw email behind the official name
       from: `"Global College Admin" <${process.env.EMAIL_USER}>`, 
       to: user.email,
       subject: "🔐 Global College - Login Verification",
@@ -116,9 +110,10 @@ router.post("/login-step1", async (req, res) => {
       `)
     };
 
-    transporter.sendMail(mailOptions).catch(() => {}); // Silent catch
+    transporter.sendMail(mailOptions).catch((err) => console.log("Email error:", err)); 
 
   } catch (error) {
+    console.error("Login Step 1 Error:", error);
     if (!res.headersSent) res.status(500).json({ message: "Server Error" });
   }
 });
@@ -127,6 +122,12 @@ router.post("/login-step1", async (req, res) => {
 router.post("/login-step2", async (req, res) => {
   try {
     let { userId, otp } = req.body;
+
+    // ✅ FIX 2: Ensure userId exists before attempting .trim()
+    if (!userId || !otp) {
+      return res.status(400).json({ message: "User ID and OTP are required" });
+    }
+
     userId = userId.trim();
 
     const user = await User.findOne({ userId: { $regex: new RegExp(`^${userId}$`, "i") } });
@@ -138,11 +139,13 @@ router.post("/login-step2", async (req, res) => {
     await User.updateOne({ _id: user._id }, { $unset: { otp: 1, otpExpires: 1 } });
 
     const payload = { user: { id: user._id, role: user.role } };
-    jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "5h" }, (err, token) => {
-      if (err) throw err;
-      res.json({ message: "Login Successful", token, user });
-    });
+    
+    // ✅ FIX 3: Safely generate JWT token synchronously to prevent fatal server crashes
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "5h" });
+    res.json({ message: "Login Successful", token, user });
+
   } catch (error) {
+    console.error("Login Step 2 Error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 });
@@ -168,7 +171,6 @@ router.post("/forgot-password-step1", async (req, res) => {
     res.json({ success: true, message: "OTP sent to your email" });
 
     const mailOptions = {
-      // 🌟 Hides the raw email behind the official name
       from: `"Global College Support" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: "🔑 Global College - Password Reset Request",
@@ -180,9 +182,10 @@ router.post("/forgot-password-step1", async (req, res) => {
       `)
     };
 
-    transporter.sendMail(mailOptions).catch(() => {});
+    transporter.sendMail(mailOptions).catch((err) => console.log("Email error:", err));
 
   } catch (err) {
+    console.error("Forgot Password Error:", err);
     if (!res.headersSent) res.status(500).json({ message: "Server Error" });
   }
 });
@@ -191,18 +194,29 @@ router.post("/forgot-password-step1", async (req, res) => {
 router.post("/verify-forgot-otp", async (req, res) => {
     try {
         const { email, otp } = req.body;
+        if (!email || !otp) return res.status(400).json({ message: "Email and OTP required" });
+
         const user = await User.findOne({ email });
         if (!user || user.otp !== otp || Date.now() > user.otpExpires) {
             return res.status(400).json({ message: "Invalid or Expired OTP" });
         }
         res.json({ success: true, message: "OTP Verified" });
-    } catch (err) { res.status(500).json({ message: "Server Error" }); }
+    } catch (err) { 
+        console.error("Verify OTP Error:", err);
+        res.status(500).json({ message: "Server Error" }); 
+    }
 });
 
 // STEP 3: Reset Password
 router.post("/reset-password", async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
+    
+    // ✅ FIX 4: Add validation to prevent crashes
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
     const user = await User.findOne({ email });
     
     if (!user || user.otp !== otp || Date.now() > user.otpExpires) {
@@ -221,22 +235,9 @@ router.post("/reset-password", async (req, res) => {
     );
 
     res.json({ success: true, message: "Password updated successfully!" });
-  } catch (err) { res.status(500).json({ message: "Server Error" }); }
-});
-
-// TEST ROUTE
-router.get("/test-email", async (req, res) => {
-  try {
-    await transporter.verify();
-    await transporter.sendMail({
-      from: `"Global College IT" <${process.env.EMAIL_USER}>`,
-      to: process.env.EMAIL_USER,
-      subject: "✅ Global College - System Test",
-      text: "Email Gateway is functioning correctly."
-    });
-    res.json({ success: true, message: "Email Sent!" });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (err) { 
+    console.error("Reset Password Error:", err);
+    res.status(500).json({ message: "Server Error" }); 
   }
 });
 
