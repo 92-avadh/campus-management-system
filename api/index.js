@@ -26,8 +26,8 @@ const corsOptions = {
   origin: [
     "http://localhost:3000",             // Local Client
     "http://localhost:3001",             // Local Admin
-    "https://your-client-app.vercel.app", // ⚠️ Replace with your actual Vercel Client URL after deployment
-    "https://your-admin-app.vercel.app"   // ⚠️ Replace with your actual Vercel Admin URL after deployment
+    "https://campus-management-system-peach.vercel.app", // ⚠️ Replace with your actual Vercel Client URL after deployment
+    "https://campus-management-system-u1x1.vercel.app"   // ⚠️ Replace with your actual Vercel Admin URL after deployment
   ],
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"],
