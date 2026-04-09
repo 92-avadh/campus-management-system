@@ -3,7 +3,8 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const path = require("path");
-const fs = require("fs"); 
+const fs = require("fs");
+const nodemailer = require("nodemailer");
 
 const app = express();
 
@@ -20,14 +21,13 @@ dirs.forEach(dir => {
 });
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// ✅ UPDATED CORS CONFIGURATION
-// This allows your local React apps and your Vercel domains to access the backend securely
+// ✅ CORS CONFIGURATION
 const corsOptions = {
   origin: [
-    "http://localhost:3000",             // Local Client
-    "http://localhost:3001",             // Local Admin
-    "https://campus-management-system-peach.vercel.app", // ⚠️ Replace with your actual Vercel Client URL after deployment
-    "https://campus-management-system-u1x1.vercel.app"   // ⚠️ Replace with your actual Vercel Admin URL after deployment
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "https://campus-management-system-peach.vercel.app",
+    "https://campus-management-system-u1x1.vercel.app"
   ],
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"],
@@ -39,22 +39,38 @@ app.use(express.json());
 
 // Routes
 app.use("/api/admin", require("./routes/adminRoutes"));
-app.use("/api/auth", require("./routes/authRoutes")); 
+app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/faculty", require("./routes/facultyRoutes"));
 app.use("/api/student", require("./routes/studentRoutes"));
 app.use("/api/courses", require("./routes/courseRoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
 app.use("/api/payment", require("./routes/paymentRoutes"));
 
+// ✅ MongoDB Connection
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => console.error("❌ DB Connection Error:", err));
+
+// ✅ Mail Server Verify Check (remove after confirmed working)
+const testTransporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
+
+testTransporter.verify((err, success) => {
+  if (err) console.error("❌ Mail Error:", err.message);
+  else console.log("✅ Mail Server Ready");
+});
 
 module.exports = app;
 
 if (require.main === module) {
   const PORT = process.env.PORT || 5000;
-  // ✅ 0.0.0.0 allows access from other devices on the network
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Server running on Port ${PORT}`);
   });
