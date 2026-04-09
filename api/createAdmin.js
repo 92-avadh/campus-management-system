@@ -29,7 +29,7 @@ const createAdmin = async () => {
       name: "Super Admin",
       
       // 👇 CHANGE THIS TO YOUR REAL GMAIL ADDRESS 👇
-      email: "dhameliyaavadh12@gmail.com", 
+      email: "sdjic.office01@gmail.com", 
       
       phone: "9999999999",
       role: "admin",        
