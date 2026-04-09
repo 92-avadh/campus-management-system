@@ -4,11 +4,11 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 
 const app = express();
 
-// ✅ Create necessary upload folders locally and on Render
+// ✅ Create necessary upload folders
 const dirs = [
   path.join(__dirname, "uploads"),
   path.join(__dirname, "uploads/materials"),
@@ -34,10 +34,9 @@ const corsOptions = {
   credentials: true
 };
 app.use(cors(corsOptions));
-
 app.use(express.json());
 
-// Routes
+// ✅ Routes
 app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/faculty", require("./routes/facultyRoutes"));
@@ -51,21 +50,15 @@ mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => console.error("❌ DB Connection Error:", err));
 
-// ✅ Mail Server Verify Check (remove after confirmed working)
-const testTransporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
-
-testTransporter.verify((err, success) => {
-  if (err) console.error("❌ Mail Error:", err.message);
-  else console.log("✅ Mail Server Ready");
-});
+// ✅ Resend Mail Verify Check (remove after confirmed working)
+const resend = new Resend(process.env.RESEND_API_KEY);
+resend.emails.send({
+  from: "onboarding@resend.dev",
+  to: "sdjic.office01@gmail.com",
+  subject: "✅ Render Mail Test",
+  html: "<p>Mail is working on Render ✅</p>"
+}).then(() => console.log("✅ Mail Server Ready"))
+  .catch(err => console.error("❌ Mail Error:", err.message));
 
 module.exports = app;
 

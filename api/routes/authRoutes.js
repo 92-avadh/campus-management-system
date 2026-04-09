@@ -1,29 +1,29 @@
 const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcryptjs");
-const nodemailer = require("nodemailer");
-const jwt = require("jsonwebtoken"); 
+const jwt = require("jsonwebtoken");
+const { Resend } = require("resend");
 const User = require("../models/User");
 
 // ==============================
-//   EMAIL CONFIG (OPTIMIZED)
+//   RESEND EMAIL CONFIG
 // ==============================
-const transporter = nodemailer.createTransport({
-  pool: true,            
-  maxConnections: 5,     
-  host: "smtp.gmail.com",
-  port: 465,              
-  secure: false,          
-  auth: { 
-    user: process.env.EMAIL_USER, 
-    pass: process.env.EMAIL_PASS 
-  },
-  tls: {
-    rejectUnauthorized: false
-  }
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-// ✅ UNIFIED EMAIL TEMPLATE BUILDER 
+const sendEmail = async (to, subject, html) => {
+  try {
+    await resend.emails.send({
+      from: "Global College <onboarding@resend.dev>",
+      to,
+      subject,
+      html
+    });
+  } catch (err) {
+    console.log("Email error:", err.message);
+  }
+};
+
+// ✅ UNIFIED EMAIL TEMPLATE BUILDER
 const getHtmlTemplate = (title, bodyContent) => `
 <!DOCTYPE html>
 <html>
@@ -63,23 +63,22 @@ const getHtmlTemplate = (title, bodyContent) => `
 `;
 
 // ==============================
-//      EXISTING LOGIN ROUTES
+//      LOGIN ROUTES
 // ==============================
 
 // LOGIN STEP 1: Validate ID & Password -> Send OTP
 router.post("/login-step1", async (req, res) => {
   try {
     let { userId, password, role } = req.body;
-    
-    // ✅ FIX 1: Ensure role exists before checking .toLowerCase() to prevent server crash
+
     if (!userId || !password || !role) {
       return res.status(400).json({ message: "All fields are required" });
     }
-    
+
     userId = userId.trim();
 
-    const user = await User.findOne({ 
-      userId: { $regex: new RegExp(`^${userId}$`, "i") } 
+    const user = await User.findOne({
+      userId: { $regex: new RegExp(`^${userId}$`, "i") }
     });
 
     if (!user) return res.status(400).json({ message: "Invalid User ID" });
@@ -92,25 +91,22 @@ router.post("/login-step1", async (req, res) => {
     if (!isMatch) return res.status(400).json({ message: "Invalid Password" });
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpires = Date.now() + 5 * 60 * 1000; 
+    const otpExpires = Date.now() + 5 * 60 * 1000;
 
     await User.updateOne({ _id: user._id }, { $set: { otp, otpExpires } });
 
     res.json({ message: "OTP Sent", email: user.email });
 
-    const mailOptions = {
-      from: `"Global College Admin" <${process.env.EMAIL_USER}>`, 
-      to: user.email,
-      subject: "🔐 Global College - Login Verification",
-      html: getHtmlTemplate("Login Authentication", `
+    await sendEmail(
+      user.email,
+      "🔐 Global College - Login Verification",
+      getHtmlTemplate("Login Authentication", `
         <p>Hello <strong>${user.name}</strong>,</p>
         <p>A login attempt was made to your Global College portal account. Please use the secure OTP below to complete your sign-in:</p>
         <div class="otp-box">${otp}</div>
         <p style="color: #64748b; font-size: 14px;">⚠️ This code is valid for 5 minutes. Do not share this code with anyone.</p>
       `)
-    };
-
-    transporter.sendMail(mailOptions).catch((err) => console.log("Email error:", err)); 
+    );
 
   } catch (error) {
     console.error("Login Step 1 Error:", error);
@@ -123,7 +119,6 @@ router.post("/login-step2", async (req, res) => {
   try {
     let { userId, otp } = req.body;
 
-    // ✅ FIX 2: Ensure userId exists before attempting .trim()
     if (!userId || !otp) {
       return res.status(400).json({ message: "User ID and OTP are required" });
     }
@@ -139,8 +134,6 @@ router.post("/login-step2", async (req, res) => {
     await User.updateOne({ _id: user._id }, { $unset: { otp: 1, otpExpires: 1 } });
 
     const payload = { user: { id: user._id, role: user.role } };
-    
-    // ✅ FIX 3: Safely generate JWT token synchronously to prevent fatal server crashes
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "5h" });
     res.json({ message: "Login Successful", token, user });
 
@@ -164,25 +157,22 @@ router.post("/forgot-password-step1", async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found with this email" });
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpires = Date.now() + 10 * 60 * 1000; 
+    const otpExpires = Date.now() + 10 * 60 * 1000;
 
     await User.updateOne({ _id: user._id }, { $set: { otp, otpExpires } });
 
     res.json({ success: true, message: "OTP sent to your email" });
 
-    const mailOptions = {
-      from: `"Global College Support" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: "🔑 Global College - Password Reset Request",
-      html: getHtmlTemplate("Reset Your Password", `
+    await sendEmail(
+      email,
+      "🔑 Global College - Password Reset Request",
+      getHtmlTemplate("Reset Your Password", `
         <p>Hi <strong>${user.name}</strong>,</p>
         <p>We received a request to reset the password for your Global College account. Please use the verification code below:</p>
         <div class="otp-box">${otp}</div>
         <p style="color: #64748b; font-size: 14px;">⚠️ This code expires in 10 minutes. If you did not request this, please ignore this email or contact support immediately.</p>
       `)
-    };
-
-    transporter.sendMail(mailOptions).catch((err) => console.log("Email error:", err));
+    );
 
   } catch (err) {
     console.error("Forgot Password Error:", err);
@@ -192,52 +182,51 @@ router.post("/forgot-password-step1", async (req, res) => {
 
 // STEP 2: Validate OTP
 router.post("/verify-forgot-otp", async (req, res) => {
-    try {
-        const { email, otp } = req.body;
-        if (!email || !otp) return res.status(400).json({ message: "Email and OTP required" });
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) return res.status(400).json({ message: "Email and OTP required" });
 
-        const user = await User.findOne({ email });
-        if (!user || user.otp !== otp || Date.now() > user.otpExpires) {
-            return res.status(400).json({ message: "Invalid or Expired OTP" });
-        }
-        res.json({ success: true, message: "OTP Verified" });
-    } catch (err) { 
-        console.error("Verify OTP Error:", err);
-        res.status(500).json({ message: "Server Error" }); 
+    const user = await User.findOne({ email });
+    if (!user || user.otp !== otp || Date.now() > user.otpExpires) {
+      return res.status(400).json({ message: "Invalid or Expired OTP" });
     }
+    res.json({ success: true, message: "OTP Verified" });
+  } catch (err) {
+    console.error("Verify OTP Error:", err);
+    res.status(500).json({ message: "Server Error" });
+  }
 });
 
 // STEP 3: Reset Password
 router.post("/reset-password", async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
-    
-    // ✅ FIX 4: Add validation to prevent crashes
+
     if (!email || !otp || !newPassword) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
     const user = await User.findOne({ email });
-    
+
     if (!user || user.otp !== otp || Date.now() > user.otpExpires) {
-        return res.status(400).json({ message: "Invalid or Expired OTP" });
+      return res.status(400).json({ message: "Invalid or Expired OTP" });
     }
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
 
     await User.updateOne(
-        { _id: user._id }, 
-        { 
-            $set: { password: hashedPassword },
-            $unset: { otp: 1, otpExpires: 1 }
-        }
+      { _id: user._id },
+      {
+        $set: { password: hashedPassword },
+        $unset: { otp: 1, otpExpires: 1 }
+      }
     );
 
     res.json({ success: true, message: "Password updated successfully!" });
-  } catch (err) { 
+  } catch (err) {
     console.error("Reset Password Error:", err);
-    res.status(500).json({ message: "Server Error" }); 
+    res.status(500).json({ message: "Server Error" });
   }
 });
 
