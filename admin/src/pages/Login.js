@@ -20,7 +20,8 @@ const Login = () => {
         localStorage.setItem("adminUser", JSON.stringify(sessionData));
 
         // 3. Remove the token from the URL for security and redirect to Dashboard
-        navigate("/", { replace: true }); 
+        // ✅ FIX: Navigate to "/dashboard" instead of "/"
+        navigate("/dashboard", { replace: true }); 
 
       } catch (error) {
         console.error("Failed to parse user data", error);

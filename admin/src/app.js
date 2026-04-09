@@ -10,17 +10,19 @@ const AnimatedRoutes = () => {
   const location = useLocation();
 
   const PrivateRoute = ({ children }) => {
-    // Check for adminUser in localStorage (or sessionStorage if you changed it)
+    // Check for adminUser in localStorage
     const user = JSON.parse(localStorage.getItem("adminUser")); 
-    return user ? children : <Navigate to="/" />;
+    // ✅ Redirect unauthenticated users to /login instead of /
+    return user ? children : <Navigate to="/login" />;
   };
 
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
+        {/* ✅ Catch both root and /login paths so the token URL matches */}
         <Route path="/" element={<Login />} />
+        <Route path="/login" element={<Login />} />
         
-        {/* ✅ Dashboard now handles everything (Users, Courses, Admissions) */}
         <Route 
           path="/dashboard" 
           element={
@@ -29,8 +31,6 @@ const AnimatedRoutes = () => {
             </PrivateRoute>
           } 
         />
-        
-        {/* ❌ REMOVED: /manage-users route (It's now a tab in Dashboard) */}
       </Routes>
     </AnimatePresence>
   );
