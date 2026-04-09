@@ -7,27 +7,34 @@ const fs = require("fs");
 
 const app = express();
 
-// ✅ VERCEL FIX: Only create folders if NOT on Vercel
-if (!process.env.VERCEL) {
-  const dirs = [
-    path.join(__dirname, "uploads"),
-    path.join(__dirname, "uploads/materials"),
-    path.join(__dirname, "uploads/doubts")
-  ];
-  dirs.forEach(dir => {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-  });
-  app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-}
+// ✅ Create necessary upload folders locally and on Render
+const dirs = [
+  path.join(__dirname, "uploads"),
+  path.join(__dirname, "uploads/materials"),
+  path.join(__dirname, "uploads/doubts")
+];
+dirs.forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+});
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// ✅ CORS allows mobile access
-app.use(cors({
-  origin: "*", 
+// ✅ UPDATED CORS CONFIGURATION
+// This allows your local React apps and your Vercel domains to access the backend securely
+const corsOptions = {
+  origin: [
+    "http://localhost:3000",             // Local Client
+    "http://localhost:3001",             // Local Admin
+    "https://your-client-app.vercel.app", // ⚠️ Replace with your actual Vercel Client URL after deployment
+    "https://your-admin-app.vercel.app"   // ⚠️ Replace with your actual Vercel Admin URL after deployment
+  ],
   methods: ["GET", "POST", "PUT", "DELETE"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
+};
+app.use(cors(corsOptions));
+
 app.use(express.json());
 
 // Routes
@@ -43,7 +50,6 @@ mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => console.error("❌ DB Connection Error:", err));
 
-// ✅ VERCEL FIX: Export the app
 module.exports = app;
 
 if (require.main === module) {
