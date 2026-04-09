@@ -1,6 +1,6 @@
 const hostname = window.location.hostname;
 // Replace this with your actual Render URL
-const RENDER_BACKEND_URL = "https://campus-management-system-x8v5.onrender.com";
+const RENDER_BACKEND_URL = "https://campus-management-system-djk7.onrender.com";
 
 export const API_BASE_URL = 
   (hostname === "localhost" || hostname === "127.0.0.1")
