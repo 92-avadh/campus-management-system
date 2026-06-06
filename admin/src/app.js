@@ -10,17 +10,22 @@ const AnimatedRoutes = () => {
   const location = useLocation();
 
   const PrivateRoute = ({ children }) => {
-    // Check for adminUser in localStorage (or sessionStorage if you changed it)
+    // Check for adminUser in localStorage
     const user = JSON.parse(localStorage.getItem("adminUser")); 
-    return user ? children : <Navigate to="/" />;
+    // If not logged in, redirect to the /login route (which handles kicking them back to port 3000)
+    return user ? children : <Navigate to="/login" />;
   };
 
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        <Route path="/" element={<Login />} />
         
-        {/* ✅ Dashboard now handles everything (Users, Courses, Admissions) */}
+        {/* ✅ ADDED: This catches the incoming redirect from the Client App (Port 3000) */}
+        <Route path="/login" element={<Login />} />
+        
+        {/* Default route safely redirects straight to dashboard */}
+        <Route path="/" element={<Navigate to="/dashboard" />} />
+        
         <Route 
           path="/dashboard" 
           element={
@@ -30,7 +35,6 @@ const AnimatedRoutes = () => {
           } 
         />
         
-        {/* ❌ REMOVED: /manage-users route (It's now a tab in Dashboard) */}
       </Routes>
     </AnimatePresence>
   );

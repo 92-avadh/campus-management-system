@@ -19,7 +19,7 @@ const ApplyModal = ({ isOpen, onClose }) => {
   const [photo, setPhoto] = useState(null);
   const [marksheet, setMarksheet] = useState(null);
   const [loading, setLoading] = useState(false);
-
+  const today = new Date().toISOString().split("T")[0];
   // ✅ FIXED: Use window.location.hostname to work on Mobile/Network
   const API_BASE_URL = `http://${window.location.hostname}:5000/api`;
 
@@ -83,7 +83,7 @@ const ApplyModal = ({ isOpen, onClose }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1">
                 <label className="text-[10px] font-bold uppercase text-slate-400 ml-2">Date of Birth</label>
-                <input name="dob" type="date" onChange={handleChange} required className="w-full px-5 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-rose-500 outline-none" />
+                <input name="dob" type="date" max={today} onChange={handleChange} required className="w-full px-5 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-rose-500 outline-none" />
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold uppercase text-slate-400 ml-2">Gender</label>

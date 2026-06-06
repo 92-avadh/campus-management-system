@@ -7,7 +7,7 @@ const FacultyTimetable = ({ user, subjects }) => {
   const [rows, setRows] = useState([{ time: "", subject: "", room: "" }]);
   const [allSchedule, setAllSchedule] = useState([]); 
   const [loading, setLoading] = useState(false);
-
+const today = new Date().toISOString().split("T")[0];
   // ✅ Fetch ALL Upcoming Schedule (No Date Filter required for view)
   const fetchSchedule = useCallback(async () => {
     if (!user.department) return;
@@ -119,7 +119,7 @@ const FacultyTimetable = ({ user, subjects }) => {
             
             <div className="mb-6">
                 <label className="block text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Select Date</label>
-                <input type="date" required className="w-full md:w-1/3 p-3 bg-gray-50 dark:bg-gray-700 rounded-xl font-bold dark:text-white border-2 border-transparent focus:border-blue-500 outline-none transition"
+                <input type="date" min={today} required className="w-full md:w-1/3 p-3 bg-gray-50 dark:bg-gray-700 rounded-xl font-bold dark:text-white border-2 border-transparent focus:border-blue-500 outline-none transition"
                     value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
             </div>
 
