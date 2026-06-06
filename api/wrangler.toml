@@ -1,0 +1,4 @@
+name = "campus-api"
+main = "index.js"
+compatibility_date = "2026-06-06"
+compatibility_flags = [ "nodejs_compat" ]
