@@ -20,18 +20,19 @@ const Timetable = require("../models/Timetable");
 // =========================================
 // EMAIL CONFIGURATION
 // =========================================
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  auth: { 
-    user: process.env.EMAIL_USER, 
-    pass: process.env.EMAIL_PASS 
-  },
-  tls: {
-    rejectUnauthorized: false
-  }
-});
+const getTransporter = () =>
+  nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false,
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
+    },
+    tls: {
+      rejectUnauthorized: false
+    }
+  });
 
 // =========================================
 // ✅ TEMP STORAGE CONFIGURATION
@@ -122,7 +123,7 @@ router.post("/apply", upload.fields([{ name: "photo" }, { name: "marksheet" }]),
         `)
       };
       
-      transporter.sendMail(mailOptions).catch(err => console.log("Email Failed", err));
+      getTransporter().sendMail(mailOptions).catch(err => console.log("Email Failed", err));
 
       res.json({ message: "Application submitted successfully!" });
     } catch (err) { 

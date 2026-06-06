@@ -8,20 +8,21 @@ const User = require("../models/User");
 // ==============================
 //   EMAIL CONFIG (OPTIMIZED)
 // ==============================
-const transporter = nodemailer.createTransport({
-  pool: true,            
-  maxConnections: 5,     
-  host: "smtp.gmail.com",
-  port: 587,              
-  secure: false,          
-  auth: { 
-    user: process.env.EMAIL_USER, 
-    pass: process.env.EMAIL_PASS 
-  },
-  tls: {
-    rejectUnauthorized: false
-  }
-});
+const getTransporter = () =>
+  nodemailer.createTransport({
+    pool: true,
+    maxConnections: 5,
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false,
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
+    },
+    tls: {
+      rejectUnauthorized: false
+    }
+  });
 
 // ✅ UNIFIED EMAIL TEMPLATE BUILDER (UPDATED FOR GLOBAL COLLEGE)
 const getHtmlTemplate = (title, bodyContent) => `
@@ -116,7 +117,7 @@ router.post("/login-step1", async (req, res) => {
       `)
     };
 
-    transporter.sendMail(mailOptions).catch(() => {}); // Silent catch
+    getTransporter().sendMail(mailOptions).catch(() => {}); // Silent catch
 
   } catch (error) {
     if (!res.headersSent) res.status(500).json({ message: "Server Error" });
@@ -180,7 +181,7 @@ router.post("/forgot-password-step1", async (req, res) => {
       `)
     };
 
-    transporter.sendMail(mailOptions).catch(() => {});
+    getTransporter().sendMail(mailOptions).catch(() => {});
 
   } catch (err) {
     if (!res.headersSent) res.status(500).json({ message: "Server Error" });
@@ -227,6 +228,7 @@ router.post("/reset-password", async (req, res) => {
 // TEST ROUTE
 router.get("/test-email", async (req, res) => {
   try {
+    const transporter = getTransporter();
     await transporter.verify();
     await transporter.sendMail({
       from: `"Global College IT" <${process.env.EMAIL_USER}>`,

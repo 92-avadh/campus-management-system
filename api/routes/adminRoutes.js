@@ -15,10 +15,15 @@ const Course = require("../models/Course");
 /* =========================================
    0. EMAIL CONFIGURATION & TEMPLATE
 ========================================= */
-const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-});
+
+// ✅ FIX: Wrapped in a function so it does NOT run in the global scope.
+// It will only execute when a specific route calls it.
+const getTransporter = () => {
+    return nodemailer.createTransport({
+        service: "gmail",
+        auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+    });
+};
 
 const getEmailTemplate = (title, content) => `
 <!DOCTYPE html>
@@ -89,27 +94,20 @@ router.post("/approve-application/:id", async (req, res) => {
         const processFile = (tempRelativePath, typePrefix) => {
             if (!tempRelativePath || tempRelativePath.startsWith("http")) return tempRelativePath;
 
-            // 1. Resolve full path of the current TEMP file
-            // Note: tempRelativePath comes from DB, e.g., "uploads/applications/TEMP_PHOTO_..."
             const oldAbsolutePath = path.join(__dirname, "../", tempRelativePath);
 
             if (fs.existsSync(oldAbsolutePath)) {
                 const ext = path.extname(tempRelativePath);
-                // 2. Define New Name: PHOTO_ST20261234.jpg
                 const newFilename = `${typePrefix}_${userId}${ext}`;
-                
-                // 3. Define New Location: "uploads/PHOTO_ST....jpg" (Moving out of 'applications' subfolder)
                 const newRelativePath = `uploads/${newFilename}`;
                 const newAbsolutePath = path.join(__dirname, "../", newRelativePath);
                 
                 try {
-                    // Rename and Move
                     fs.renameSync(oldAbsolutePath, newAbsolutePath);
-                    // Return the new relative path for the DB
                     return newRelativePath.replace(/\\/g, "/"); 
                 } catch (e) { 
                     console.error(`Error processing ${typePrefix}:`, e);
-                    return tempRelativePath; // Fallback to old path if move fails
+                    return tempRelativePath; 
                 }
             }
             return tempRelativePath;
@@ -132,6 +130,9 @@ router.post("/approve-application/:id", async (req, res) => {
         // Mark Application as Approved
         app.status = "Approved";
         await app.save();
+
+        // ✅ Initialize Transporter INSIDE the route handler
+        const transporter = getTransporter();
 
         // Send Email
         const mailOptions = {
@@ -165,6 +166,9 @@ router.post("/reject-application/:id", async (req, res) => {
         const { reason } = req.body;
         const app = await Application.findById(req.params.id);
         if (!app) return res.status(404).json({ message: "Application not found" });
+
+        // ✅ Initialize Transporter INSIDE the route handler
+        const transporter = getTransporter();
 
         // Send Rejection Email
         const mailOptions = {
@@ -314,6 +318,9 @@ router.post("/add-user", async (req, res) => {
         });
         await newUser.save();
         
+        // ✅ Initialize Transporter INSIDE the route handler
+        const transporter = getTransporter();
+
         const mailOptions = {
             from: process.env.EMAIL_USER, to: email,
             subject: "Welcome to Campus System",
